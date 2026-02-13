@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STCM Dashboard</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎲 SillyTavern Campaign Manager</h1>
+            <nav>
+                <a href="/static/index.html" class="active">Dashboard</a>
+                <a href="/static/settings.html">Settings</a>
+                <a href="/static/review.html">Review Queue <span id="queue-count" class="badge">0</span></a>
+                <a href="/static/history.html">History</a>
+            </nav>
+        </header>
+        
+        <main>
+            <!-- Status Cards -->
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-icon">🔍</div>
+                    <div class="card-content">
+                        <h3>Last Scan</h3>
+                        <p id="last-scan-time" class="card-value">Never</p>
+                        <span id="last-scan-status" class="status-badge"></span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">⏳</div>
+                    <div class="card-content">
+                        <h3>Pending Review</h3>
+                        <p id="pending-count" class="card-value">0</p>
+                        <span class="card-label">entities awaiting approval</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">✓</div>
+                    <div class="card-content">
+                        <h3>Applied Today</h3>
+                        <p id="applied-count" class="card-value">0</p>
+                        <span class="card-label">updates applied</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">🤖</div>
+                    <div class="card-content">
+                        <h3>Ollama Status</h3>
+                        <p id="ollama-status" class="card-value">Checking...</p>
+                        <button onclick="testOllama()" class="btn-small">Test Connection</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Manual Scan Section -->
+            <div class="action-section">
+                <h2>Manual Scan</h2>
+                <div class="scan-controls">
+                    <select id="chat-select" class="input-select">
+                        <option value="">Select a chat file...</option>
+                    </select>
+                    <input type="number" id="messages-limit" class="input-number" value="50" min="10" max="500" placeholder="Messages to scan">
+                    <button onclick="runManualScan()" class="btn-primary">
+                        🔍 Run Scan
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Recent Activity Log -->
+            <div class="log-section">
+                <h2>Recent Activity</h2>
+                <div id="activity-log" class="log">
+                    <p class="log-empty">No recent activity</p>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span id="ws-status" class="ws-indicator">●</span>
+            <span id="status-message">Connecting...</span>
+        </div>
+    </div>
+    
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+ollama:
+  url: "http://localhost:11434"
+  model: "llama3.2"
+  api_key: null
+  timeout: 120
+
+sillytavern:
+  chats_dir: "/path/to/SillyTavern/data/default-user/chats"
+  characters_dir: "/path/to/SillyTavern/data/default-user/characters"
+  personas_dir: "/path/to/SillyTavern/data/default-user/personas"
+
+# Map chat files to character files
+# Format: "chat_filename.jsonl": "character_filename.json"
+chat_mappings:
+  "Jinx_-_2026-02-13.jsonl": "Jinx__2_.json"
+  # Add more mappings as needed
+  # "SciFi_Campaign.jsonl": "Cortex_AI.json"
+
+scanning:
+  schedule: "0 3 * * *"  # Cron format: Daily at 3 AM
+  messages_per_scan: 50
+  scan_recent_only: true
+  confidence_threshold: 0.7
+
+auto_apply:
+  enabled: false
+  high_confidence_threshold: 0.9
+  create_backups: true
+  backup_retention_days: 30
+
+entity_tracking:
+  npcs: true
+  factions: true
+  locations: true
+  items: true
+  aliases: true
+  events: false
+  stats: true  # Track persona stat changes
+
+database:
+  path: "data/stcm.db"
+
+logging:
+  level: "INFO"
+  file: "data/logs/stcm.log"
+
+server:
+  host: "0.0.0.0"
+  port: 8000

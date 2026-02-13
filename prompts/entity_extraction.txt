@@ -1,0 +1,103 @@
+You are analyzing a D&D 5e campaign chat log. Extract ALL significant entities mentioned in the conversation.
+
+IMPORTANT RULES:
+- Only extract entities that are clearly defined and significant to the story
+- Ignore generic NPCs like "a guard", "the bartender", or "some sailors"
+- Include proper nouns and named characters/places/factions
+- Set confidence scores based on how much detail is provided
+- Count how many times the entity is mentioned
+- DO NOT include any text outside the JSON structure
+- DO NOT use markdown code blocks
+
+CHAT LOG:
+{chat_text}
+
+Extract and return ONLY valid JSON with this exact structure:
+
+{{
+  "npcs": [
+    {{
+      "name": "Character Name",
+      "description": "Physical appearance, role, and notable characteristics",
+      "relationship": "Relationship to {{{{user}}}} (ally, enemy, neutral, employee, etc.)",
+      "mentions": 3,
+      "confidence": 0.9,
+      "source_context": "Brief quote showing where they appeared"
+    }}
+  ],
+  "factions": [
+    {{
+      "name": "Faction Name",
+      "description": "What this faction/gang/organization does",
+      "goals": "Their objectives or purpose",
+      "leadership": "Who leads them (if mentioned)",
+      "territory": "Where they operate (if mentioned)",
+      "relationship": "Relationship to {{{{user}}}} (ally, rival, enemy, neutral)",
+      "mentions": 2,
+      "confidence": 0.85,
+      "source_context": "Brief quote showing where they appeared"
+    }}
+  ],
+  "locations": [
+    {{
+      "name": "Location Name",
+      "description": "What and where this place is",
+      "significance": "Why this location matters to the story",
+      "mentions": 1,
+      "confidence": 0.7,
+      "source_context": "Brief quote showing where it appeared"
+    }}
+  ],
+  "items": [
+    {{
+      "name": "Item Name",
+      "description": "What this item is",
+      "properties": "Magical properties, significance, or special features",
+      "mentions": 1,
+      "confidence": 0.6,
+      "source_context": "Brief quote showing where it appeared"
+    }}
+  ],
+  "aliases": [
+    {{
+      "name": "Alias Name",
+      "real_identity": "{{{{user}}}}'s character name if this is their disguise",
+      "purpose": "Why this disguise/alias is used",
+      "appearance": "How they appear in this form",
+      "mentions": 2,
+      "confidence": 0.95,
+      "source_context": "Brief quote showing where they used it"
+    }}
+  ],
+  "stats": [
+    {{
+      "type": "stat_change",
+      "stat_name": "HP, Gold, Level, Spell Slots, etc.",
+      "old_value": "Previous value if mentioned",
+      "new_value": "New value",
+      "confidence": 0.8,
+      "source_context": "Brief quote showing the change"
+    }}
+  ]
+}}
+
+CONFIDENCE SCORING GUIDE:
+- 0.9-1.0: Entity is named, described in detail, appears multiple times
+- 0.7-0.9: Entity is named, has some description, clear significance
+- 0.5-0.7: Entity is mentioned by name but limited detail
+- 0.3-0.5: Entity is vague or only mentioned once briefly
+- Below 0.3: Don't include (too generic or unclear)
+
+EXAMPLES OF WHAT TO EXTRACT:
+✓ "Marcellous, a Black Crows lieutenant with a scarred face"
+✓ "The Jade Cutters gang that runs protection rackets"
+✓ "Lord Cassius' manor in the merchant quarter"
+✓ "I disguise myself as Draven Martell using Disguise Self"
+
+EXAMPLES OF WHAT NOT TO EXTRACT:
+✗ "a guard at the door"
+✗ "some random thug"
+✗ "the bartender"
+✗ "a merchant"
+
+Return ONLY the JSON structure, no additional text.
