@@ -2,6 +2,7 @@ from typing import Dict, Optional, List
 from utils.file_ops import FileOperations
 from database import db
 import re
+import unicodedata
 
 class LorebookUpdater:
     """Update character lorebooks with new entities"""
@@ -160,20 +161,35 @@ class LorebookUpdater:
         # Simple hash-based ID
         return abs(hash(name)) % 1000000
     
+    def _sanitize_for_keys(self, name: str) -> str:
+        """Strip emoji/symbols from name, preserving letters, numbers, and spaces"""
+        return ''.join(
+            c for c in name
+            if unicodedata.category(c)[0] in ('L', 'N', 'Z')
+        ).strip()
+    
     def _generate_keys(self, name: str) -> List[str]:
         """Generate search keys for an entity"""
-        keys = [name.lower()]
+        # Sanitize the name first (strip emoji/symbols)
+        sanitized = self._sanitize_for_keys(name)
+        base_name = sanitized if sanitized else name
+        
+        keys = [base_name.lower()]
+        
+        # Add the original name too if different
+        if name.lower() != base_name.lower():
+            keys.append(name.lower())
         
         # Add variations
         # First name if multiple words
-        parts = name.split()
+        parts = base_name.split()
         if len(parts) > 1:
             keys.append(parts[0].lower())
             keys.append(parts[-1].lower())
         
         # Add without special characters
-        clean_name = re.sub(r'[^a-zA-Z0-9\s]', '', name).lower()
-        if clean_name != name.lower():
+        clean_name = re.sub(r'[^a-zA-Z0-9\s]', '', base_name).lower()
+        if clean_name != base_name.lower():
             keys.append(clean_name)
         
         # Remove duplicates while preserving order

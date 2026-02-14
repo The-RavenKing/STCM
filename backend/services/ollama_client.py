@@ -104,8 +104,15 @@ class OllamaClient:
                         data = await response.json()
                         models = [m['name'] for m in data.get('models', [])]
                         
-                        reader_ok = self.reader_model in models
-                        coder_ok = self.coder_model in models
+                        # Use substring matching so "llama3.2" matches "llama3.2:latest"
+                        reader_ok = any(
+                            self.reader_model in m or m.startswith(self.reader_model + ':')
+                            for m in models
+                        )
+                        coder_ok = any(
+                            self.coder_model in m or m.startswith(self.coder_model + ':')
+                            for m in models
+                        )
                         
                         if reader_ok and coder_ok:
                             return True, f"✓ Connected to Ollama. Reader: '{self.reader_model}' ✓, Coder: '{self.coder_model}' ✓"

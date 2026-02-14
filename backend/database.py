@@ -11,6 +11,13 @@ class Database:
     
     def __init__(self, db_path: str = None):
         self.db_path = db_path or config.db_path
+        self._wal_set = False
+    
+    async def _ensure_wal(self, db):
+        """Set WAL journal mode once per process lifetime for concurrency and crash recovery"""
+        if not self._wal_set:
+            await db.execute("PRAGMA journal_mode=WAL")
+            self._wal_set = True
         
     async def integrity_check(self) -> bool:
         """Check database integrity"""
@@ -33,21 +40,21 @@ class Database:
         shutil.copy2(self.db_path, backup_path)
         return str(backup_path)
     
-    async def execute(self, query: str, params: tuple = ()):
+    async def execute(self, query: str, params: tuple = (), skip_backup: bool = False):
         """Execute a single query with automatic backup before critical operations"""
-        # Backup before destructive operations
-        if any(keyword in query.upper() for keyword in ['DELETE', 'DROP', 'TRUNCATE']):
+        # Backup before destructive operations (unless explicitly skipped)
+        if not skip_backup and any(keyword in query.upper() for keyword in ['DELETE', 'DROP', 'TRUNCATE']):
             await self.backup_database()
         
         async with aiosqlite.connect(self.db_path) as db:
-            # Enable WAL mode for better concurrency and crash recovery
-            await db.execute("PRAGMA journal_mode=WAL")
+            await self._ensure_wal(db)
             await db.execute(query, params)
             await db.commit()
     
     async def fetch_one(self, query: str, params: tuple = ()) -> Optional[Dict]:
         """Fetch a single row"""
         async with aiosqlite.connect(self.db_path) as db:
+            await self._ensure_wal(db)
             db.row_factory = aiosqlite.Row
             async with db.execute(query, params) as cursor:
                 row = await cursor.fetchone()
@@ -56,6 +63,7 @@ class Database:
     async def fetch_all(self, query: str, params: tuple = ()) -> List[Dict]:
         """Fetch all rows"""
         async with aiosqlite.connect(self.db_path) as db:
+            await self._ensure_wal(db)
             db.row_factory = aiosqlite.Row
             async with db.execute(query, params) as cursor:
                 rows = await cursor.fetchall()
@@ -72,7 +80,31 @@ class Database:
         source_messages: str,
         confidence_score: float
     ) -> int:
-        """Add entity to review queue"""
+        """Add entity to review queue (or update if duplicate pending entry exists)"""
+        # Check for existing pending entity with same name, type, and target
+        existing_query = """
+        SELECT id FROM entity_queue
+        WHERE entity_name = ? AND entity_type = ? AND target_file = ? AND status = 'pending'
+        LIMIT 1
+        """
+        existing = await self.fetch_one(
+            existing_query, (entity_name, entity_type, target_file)
+        )
+        
+        if existing:
+            # Update existing entry instead of creating a duplicate
+            update_query = """
+            UPDATE entity_queue
+            SET entity_data = ?, confidence_score = ?, source_messages = ?
+            WHERE id = ?
+            """
+            await self.execute(
+                update_query,
+                (json.dumps(entity_data), confidence_score, source_messages, existing['id'])
+            )
+            return existing['id']
+        
+        # Insert new entity
         query = """
         INSERT INTO entity_queue (
             entity_type, entity_name, entity_data, target_file,
@@ -292,7 +324,7 @@ class Database:
     async def reset_checkpoint(self, chat_file: str):
         """Reset checkpoint to rescan entire chat"""
         query = "DELETE FROM processing_checkpoints WHERE chat_file = ?"
-        await self.execute(query, (chat_file,))
+        await self.execute(query, (chat_file,), skip_backup=True)
 
 # Global database instance
 db = Database()

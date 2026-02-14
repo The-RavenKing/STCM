@@ -1,10 +1,22 @@
+import asyncio
+import json
 from typing import Dict, List
 from services.ollama_client import OllamaClient
 from services.entity_extractor import EntityExtractor
 from services.chunk_processor import ChunkProcessor
 from services.chat_reader import ChatReader
+from services.hallucination_detector import HallucinationDetector
 from database import db
-import json
+
+# Map plural entity type keys to singular DB values
+ENTITY_TYPE_MAP = {
+    'npcs': 'npc',
+    'factions': 'faction',
+    'locations': 'location',
+    'items': 'item',
+    'aliases': 'alias',
+    'stats': 'stat',
+}
 
 class TwoPhaseProcessor:
     """
@@ -120,6 +132,11 @@ class TwoPhaseProcessor:
         
         Returns list of entity dicts (one per chunk)
         """
+        from config import config
+        hallucination_detector = HallucinationDetector()
+        rate_limit_delay = config.get('ollama.rate_limit_delay', 2)
+        batch_size = config.get('ollama.batch_size', 5)
+        
         all_chunk_entities = []
         
         for chunk_idx, chunk_texts in enumerate(chunks):
@@ -128,10 +145,24 @@ class TwoPhaseProcessor:
             try:
                 # Use READER AI to extract
                 chunk_entities = await extractor.extract_entities(chunk_texts)
+                
+                # Run hallucination detection
+                source_text = "\n".join(chunk_texts)
+                chunk_entities = hallucination_detector.filter_hallucinations(
+                    chunk_entities, source_text
+                )
+                
                 all_chunk_entities.append(chunk_entities)
+                
+                # Explicit cleanup
+                del source_text
             except Exception as e:
                 print(f"  ⚠ Error in chunk {chunk_idx + 1}: {e}")
                 continue
+            
+            # Rate limiting: pause every batch_size chunks
+            if (chunk_idx + 1) % batch_size == 0 and chunk_idx + 1 < len(chunks):
+                await asyncio.sleep(rate_limit_delay)
         
         return all_chunk_entities
     
@@ -284,8 +315,8 @@ Generate the lorebook entries:"""
         if not aliases and not stats:
             return []
         
-        # Similar prompt for persona updates
-        # (Implementation similar to lorebook generation)
+        # TODO: Implement persona update generation with CODER AI
+        print(f"⚠ Persona update generation not yet implemented ({len(aliases)} aliases, {len(stats)} stats skipped)")
         return []
     
     async def _add_to_queue(
@@ -301,9 +332,10 @@ Generate the lorebook entries:"""
         source_context = f"Messages {metadata['start_index']}-{metadata['end_index']}"
         
         for entity_type, entity_list in entities.items():
+            db_type = ENTITY_TYPE_MAP.get(entity_type, entity_type)
             for entity in entity_list:
                 await db.add_entity(
-                    entity_type=entity_type,
+                    entity_type=db_type,
                     entity_name=entity.get('name', 'Unknown'),
                     entity_data=entity,
                     target_file=char_path,

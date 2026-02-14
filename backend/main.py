@@ -98,7 +98,8 @@ async def websocket_endpoint(websocket: WebSocket):
             # Keep connection alive
             await websocket.receive_text()
     except WebSocketDisconnect:
-        active_connections.remove(websocket)
+        if websocket in active_connections:
+            active_connections.remove(websocket)
 
 async def broadcast_update(message: dict):
     """Broadcast update to all connected WebSocket clients"""

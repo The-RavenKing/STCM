@@ -27,11 +27,16 @@ class PersonaUpdater:
         # Load persona
         persona = await self.file_ops.read_json(persona_file)
         
-        # Get default persona key
+        # Get default persona key (with fallback for files without default_persona)
         persona_key = persona.get("default_persona")
         if not persona_key:
-            print("Error: No default persona found")
-            return False
+            # Fall back to first available key in persona_descriptions
+            persona_descs = persona.get("persona_descriptions", {})
+            if persona_descs:
+                persona_key = list(persona_descs.keys())[0]
+            else:
+                print("Error: No persona descriptions found")
+                return False
         
         # Get persona description
         persona_desc = persona["persona_descriptions"].get(persona_key, {})
@@ -99,9 +104,14 @@ class PersonaUpdater:
         # Load persona
         persona = await self.file_ops.read_json(persona_file)
         
+        # Get default persona key (with fallback)
         persona_key = persona.get("default_persona")
         if not persona_key:
-            return False
+            persona_descs = persona.get("persona_descriptions", {})
+            if persona_descs:
+                persona_key = list(persona_descs.keys())[0]
+            else:
+                return False
         
         description = persona["persona_descriptions"][persona_key]["description"]
         

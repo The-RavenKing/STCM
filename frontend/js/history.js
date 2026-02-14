@@ -1,63 +1,73 @@
 // History Page JavaScript
 
+// XSS prevention
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(String(str)));
+    return div.innerHTML;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     loadScans();
     loadUpdates();
 });
 
-function showTab(tabName) {
+function showTab(tabName, event) {
     // Hide all tabs
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
     });
-    
+
     // Remove active from all tab buttons
     document.querySelectorAll('.tab').forEach(btn => {
         btn.classList.remove('active');
     });
-    
+
     // Show selected tab
     document.getElementById(`${tabName}-tab`).classList.add('active');
-    
+
     // Make button active
-    event.target.classList.add('active');
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
 }
 
 async function loadScans() {
     try {
         const { scans } = await API.getScanHistory(50);
         const container = document.getElementById('scans-list');
-        
+
         if (scans.length === 0) {
             container.innerHTML = '<p class="loading">No scan history yet</p>';
             return;
         }
-        
+
         container.innerHTML = scans.map(scan => `
-            <div class="history-item ${scan.status}">
+            <div class="history-item ${escapeHtml(scan.status)}">
                 <div class="history-header">
                     <span class="history-icon">${scan.status === 'completed' ? '✓' : '✗'}</span>
                     <div class="history-info">
-                        <strong>${scan.chat_file}</strong>
+                        <strong>${escapeHtml(scan.chat_file)}</strong>
                         <span class="history-meta">
                             ${formatDate(scan.scan_date)} • 
                             ${scan.messages_scanned} messages • 
                             ${scan.entities_found} entities found
                         </span>
                     </div>
-                    <span class="status-badge ${scan.status}">
-                        ${scan.status}
+                    <span class="status-badge ${escapeHtml(scan.status)}">
+                        ${escapeHtml(scan.status)}
                     </span>
                 </div>
                 ${scan.error_message ? `
-                    <div class="error-message">${scan.error_message}</div>
+                    <div class="error-message">${escapeHtml(scan.error_message)}</div>
                 ` : ''}
             </div>
         `).join('');
-        
+
     } catch (error) {
         console.error('Error loading scan history:', error);
-        document.getElementById('scans-list').innerHTML = 
+        document.getElementById('scans-list').innerHTML =
             '<p class="loading">Error loading scan history</p>';
     }
 }
@@ -66,31 +76,31 @@ async function loadUpdates() {
     try {
         const { updates } = await API.getUpdateHistory(100);
         const container = document.getElementById('updates-list');
-        
+
         if (updates.length === 0) {
             container.innerHTML = '<p class="loading">No updates applied yet</p>';
             return;
         }
-        
+
         container.innerHTML = updates.map(update => `
             <div class="history-item completed">
                 <div class="history-header">
                     <span class="history-icon">✓</span>
                     <div class="history-info">
-                        <strong>${update.entity_name}</strong>
+                        <strong>${escapeHtml(update.entity_name)}</strong>
                         <span class="history-meta">
                             ${formatDate(update.applied_at)} • 
-                            ${update.entity_type} • 
-                            ${update.action} to ${update.target_file.split('/').pop()}
+                            ${escapeHtml(update.entity_type)} • 
+                            ${escapeHtml(update.action)} to ${escapeHtml(update.target_file.split('/').pop())}
                         </span>
                     </div>
                 </div>
             </div>
         `).join('');
-        
+
     } catch (error) {
         console.error('Error loading update history:', error);
-        document.getElementById('updates-list').innerHTML = 
+        document.getElementById('updates-list').innerHTML =
             '<p class="loading">Error loading update history</p>';
     }
 }

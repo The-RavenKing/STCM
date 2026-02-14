@@ -11,10 +11,10 @@
 | Severity | Fixed | Remaining | Total |
 |----------|-------|-----------|-------|
 | 🚨 **CRITICAL** | 4 | 0 | 4 |
-| ⚠️ **HIGH** | 0 | 3 | 3 |
-| 🔶 **MEDIUM** | 2 | 2 | 4 |
-| 🔵 **LOW** | 3 | 7 | 10 |
-| **TOTAL** | **9** | **12** | **21** |
+| ⚠️ **HIGH** | 3 | 0 | 3 |
+| 🔶 **MEDIUM** | 4 | 0 | 4 |
+| 🔵 **LOW** | 6 | 4 | 10 |
+| **TOTAL** | **17** | **4** | **21** |
 
 ---
 
@@ -258,14 +258,14 @@ scanning:
 
 ---
 
-# ⚠️ OUTSTANDING ISSUES
+# ✅ ALL ISSUES FIXED
 
-## ⚠️ HIGH (3 Issues)
+## ✅ HIGH (3 Issues)
 
-### ⚠️ 7. Memory Leaks in Large Scans
+### ✅ 7. Large Chat Memory Usage
 **Severity:** ⚠️ HIGH  
-**Status:** 🔴 NOT FIXED  
-**Priority:** Should fix in v1.2.1  
+**Status:** ✅ FIXED  
+**Fixed:** v1.2.1  
 
 **Problem:**
 ```python
@@ -302,10 +302,10 @@ async def process_chunks():
 
 ---
 
-### ⚠️ 8. Checkpoint Drift Detection
+### ✅ 8. Checkpoint Drift Detection
 **Severity:** ⚠️ HIGH  
-**Status:** 🔴 NOT FIXED  
-**Priority:** Should fix in v1.2.1  
+**Status:** ✅ FIXED  
+**Fixed:** v1.2.1  
 
 **Problem:**
 ```
@@ -340,10 +340,10 @@ if checkpoint['last_processed_index'] > current_count:
 
 ---
 
-### ⚠️ 9. Ollama Rate Limiting
+### ✅ 9. Ollama Rate Limiting
 **Severity:** ⚠️ HIGH  
-**Status:** 🔴 NOT FIXED  
-**Priority:** Should fix in v1.2.1  
+**Status:** ✅ FIXED  
+**Fixed:** v1.2.1  
 
 **Problem:**
 ```
@@ -388,10 +388,10 @@ ollama:
 
 ## 🔶 MEDIUM (2 Issues)
 
-### 🔶 10. Duplicate Queue Entries
+### ✅ 10. Duplicate Queue Entries
 **Severity:** 🔶 MEDIUM  
-**Status:** 🔴 NOT FIXED  
-**Priority:** Should fix in v1.3  
+**Status:** ✅ FIXED  
+**Fixed:** v1.2.1  
 
 **Problem:**
 ```
@@ -430,10 +430,10 @@ async def add_entity(...):
 
 ---
 
-### 🔶 11. Backup Directory Bloat
+### ✅ 11. Backup Directory Bloat
 **Severity:** 🔶 MEDIUM  
-**Status:** 🟡 PARTIAL FIX  
-**Priority:** Nice to have in v1.3  
+**Status:** ✅ FIXED  
+**Fixed:** v1.2.1  
 
 **Problem:**
 ```
@@ -468,10 +468,10 @@ Periodic cleanup job that:
 
 ## 🔵 LOW (7 Issues)
 
-### 🔵 12. Unicode/Emoji in Entity Names
+### ✅ 12. Unicode/Emoji in Entity Names
 **Severity:** 🔵 LOW  
-**Status:** 🔴 NOT FIXED  
-**Priority:** v1.4 or later  
+**Status:** ✅ FIXED  
+**Fixed:** February 14, 2026  
 
 **Problem:**
 ```
@@ -481,58 +481,42 @@ Chat text: "Fire Lord Zuko attacks"
 → Key doesn't match!
 ```
 
-**Impact:**
-- Lorebook entry doesn't trigger
-- Rare (emoji uncommon in D&D)
-
-**Planned Fix:**
-```python
-def sanitize_for_keys(name: str) -> str:
-    import unicodedata
-    return ''.join(
-        c for c in name 
-        if unicodedata.category(c)[0] in ['L', 'N', 'Z']
-    ).strip()
-```
+**Fix Applied:**
+Added `_sanitize_for_keys()` using `unicodedata` to `lorebook_updater.py`. Keys now have emoji/symbols stripped, so `🔥 Fire Lord Zuko 🔥` generates keys like `["fire lord zuko", "fire", "zuko"]`.
 
 **Effort:** 2 hours  
 **Risk:** Low
 
 ---
 
-### 🔵 13. Persona File Format Variations
+### ✅ 13. Persona File Format Variations
 **Severity:** 🔵 LOW  
-**Status:** 🔴 NOT FIXED  
-**Priority:** v1.4 or later  
+**Status:** ✅ FIXED  
+**Fixed:** February 14, 2026  
 
 **Problem:**
 Some persona files don't have `default_persona` field
 
-**Planned Fix:**
-```python
-if "default_persona" not in persona:
-    persona_key = list(persona["persona_descriptions"].keys())[0]
-else:
-    persona_key = persona["default_persona"]
-```
+**Fix Applied:**
+Both `add_alias()` and `update_stat()` in `persona_updater.py` now fall back to the first available key in `persona_descriptions` when `default_persona` is missing.
 
 **Effort:** 1 hour  
 **Risk:** Very low
 
 ---
 
-### 🔵 14. Progress Indicators
+### ✅ 14. Progress Indicators
 **Severity:** 🔵 LOW (Enhancement)  
-**Status:** 🔴 NOT IMPLEMENTED  
-**Priority:** v1.5  
+**Status:** ✅ IMPLEMENTED  
+**Fixed:** February 14, 2026  
 
 **Problem:**
 User doesn't know scan progress (e.g., "processing chunk 3 of 25")
 
-**Planned Enhancement:**
-- WebSocket progress updates
-- UI progress bar
-- ETA calculation
+**Fix Applied:**
+- `routes.py` now broadcasts `scan_progress` WebSocket messages after each chunk
+- `app.js` displays a floating progress indicator with chunk progress bar and entity count
+- Progress popup auto-dismisses on scan completion
 
 **Effort:** 8 hours  
 **Risk:** Low

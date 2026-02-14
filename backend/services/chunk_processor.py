@@ -50,6 +50,18 @@ class ChunkProcessor:
             checkpoint = await db.get_checkpoint(chat_file)
             if checkpoint:
                 start_index = checkpoint['last_processed_index']
+                
+                # Checkpoint drift detection (Issue #8):
+                # If user deleted messages, checkpoint may exceed actual count
+                if start_index > total_messages:
+                    print(
+                        f"⚠ Checkpoint drift detected for {chat_file}: "
+                        f"checkpoint at {start_index} but only {total_messages} messages. "
+                        f"Resetting checkpoint."
+                    )
+                    await db.reset_checkpoint(chat_file)
+                    start_index = 0
+                    checkpoint = None
         
         # If nothing new, return empty
         if start_index >= total_messages:

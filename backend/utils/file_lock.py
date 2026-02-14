@@ -1,14 +1,59 @@
-import fcntl
+import os
 import time
 from pathlib import Path
 from typing import Optional
 from contextlib import contextmanager
 
+# Cross-platform file locking
+if os.name == 'nt':
+    # Windows
+    import msvcrt
+
+    def _lock_file(fd, exclusive=True, blocking=True):
+        """Acquire a lock on the file descriptor (Windows)."""
+        mode = msvcrt.LK_NBLCK if not blocking else msvcrt.LK_LOCK
+        if not exclusive and not blocking:
+            mode = msvcrt.LK_NBRLCK
+        elif not exclusive:
+            mode = msvcrt.LK_RLCK
+        # Lock 1 byte — standard convention for advisory file locking on Windows.
+        # All STCM code uses size=1 consistently so locks are interoperable.
+        msvcrt.locking(fd, mode, 1)
+
+    def _unlock_file(fd):
+        """Release a lock on the file descriptor (Windows)."""
+        try:
+            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+        except OSError:
+            pass
+else:
+    # POSIX (Linux, macOS)
+    import fcntl
+
+    def _lock_file(fd, exclusive=True, blocking=True):
+        """Acquire a lock on the file descriptor (POSIX)."""
+        if exclusive:
+            flag = fcntl.LOCK_EX
+        else:
+            flag = fcntl.LOCK_SH
+        if not blocking:
+            flag |= fcntl.LOCK_NB
+        fcntl.flock(fd, flag)
+
+    def _unlock_file(fd):
+        """Release a lock on the file descriptor (POSIX)."""
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        except OSError:
+            pass
+
+
 class FileLockManager:
     """
     Prevent concurrent access to character/persona files
     
-    Ensures STCM doesn't corrupt files while SillyTavern is using them
+    Ensures STCM doesn't corrupt files while SillyTavern is using them.
+    Cross-platform: uses msvcrt on Windows, fcntl on POSIX.
     """
     
     def __init__(self, timeout: int = 30):
@@ -28,22 +73,21 @@ class FileLockManager:
         """
         path = Path(file_path)
         lock_file = None
+        lock_path = path.with_suffix('.lock')
         
         try:
             # Create lock file
-            lock_path = path.with_suffix('.lock')
             lock_file = open(lock_path, 'w')
             
             # Try to acquire lock with timeout
             start_time = time.time()
+            exclusive = (mode == 'exclusive')
+            
             while True:
                 try:
-                    if mode == 'exclusive':
-                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    else:
-                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_SH | fcntl.LOCK_NB)
+                    _lock_file(lock_file.fileno(), exclusive=exclusive, blocking=False)
                     break
-                except IOError:
+                except (IOError, OSError):
                     # Lock is held by another process
                     if time.time() - start_time > self.timeout:
                         raise TimeoutError(
@@ -58,10 +102,11 @@ class FileLockManager:
             # Release lock
             if lock_file:
                 try:
-                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+                    _unlock_file(lock_file.fileno())
                     lock_file.close()
-                    lock_path.unlink()
-                except:
+                    if lock_path.exists():
+                        lock_path.unlink()
+                except Exception:
                     pass
     
     def try_lock(self, file_path: str) -> bool:
@@ -75,12 +120,13 @@ class FileLockManager:
         
         try:
             lock_file = open(lock_path, 'w')
-            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+            _lock_file(lock_file.fileno(), exclusive=True, blocking=False)
+            _unlock_file(lock_file.fileno())
             lock_file.close()
-            lock_path.unlink()
+            if lock_path.exists():
+                lock_path.unlink()
             return True
-        except IOError:
+        except (IOError, OSError):
             return False
     
     def is_file_in_use(self, file_path: str) -> bool:

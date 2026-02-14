@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import List, Optional, Dict
@@ -9,9 +11,22 @@ from services.ollama_client import ollama_client
 from services.chat_reader import ChatReader
 from services.entity_extractor import EntityExtractor
 from services.lorebook_updater import LorebookUpdater
+from services.hallucination_detector import HallucinationDetector
+from services.backup_manager import BackupManager
 from utils.file_ops import FileOperations
+from utils.scan_lock import scan_lock_manager
 
 router = APIRouter()
+
+# Map plural entity type keys (used internally) to singular DB values
+ENTITY_TYPE_MAP = {
+    'npcs': 'npc',
+    'factions': 'faction',
+    'locations': 'location',
+    'items': 'item',
+    'aliases': 'alias',
+    'stats': 'stat',
+}
 
 # Pydantic models for request/response
 class ConfigUpdate(BaseModel):
@@ -40,6 +55,8 @@ async def get_config():
     return {
         "ollama": {
             "url": config.ollama_url,
+            "reader_model": config.get('ollama.reader_model', config.ollama_model),
+            "coder_model": config.get('ollama.coder_model', config.ollama_model),
             "model": config.ollama_model,
             "has_api_key": config.ollama_api_key is not None
         },
@@ -121,12 +138,31 @@ async def manual_scan(request: ScanRequest, background_tasks: BackgroundTasks):
 
 async def run_scan(chat_file: str, character_file: str, force_rescan: bool = False):
     """Background task to run a scan with chunking"""
+    # Acquire scan lock to prevent concurrent scans on the same file
+    if not await scan_lock_manager.acquire_scan_lock(chat_file):
+        print(f"Scan already in progress for {chat_file}, skipping.")
+        return
+    
     try:
+        # Helper to broadcast progress via WebSocket
+        async def broadcast_progress(data: dict):
+            try:
+                from main import app
+                if hasattr(app.state, 'broadcast'):
+                    await app.state.broadcast(data)
+            except Exception:
+                pass  # WebSocket broadcast is best-effort
+        
         # Initialize services
         reader = ChatReader(config.chats_dir)
         from services.chunk_processor import ChunkProcessor
         chunk_processor = ChunkProcessor(reader)
         extractor = EntityExtractor(ollama_client)
+        hallucination_detector = HallucinationDetector()
+        
+        # Rate limiting config
+        rate_limit_delay = config.get('ollama.rate_limit_delay', 2)
+        batch_size = config.get('ollama.batch_size', 5)
         
         # Get chunks to process (with checkpoint tracking)
         chunks, metadata = await chunk_processor.get_chunks_to_process(
@@ -141,7 +177,17 @@ async def run_scan(chat_file: str, character_file: str, force_rescan: bool = Fal
             )
             return
         
-        # Process each chunk
+        # Broadcast scan started
+        await broadcast_progress({
+            "type": "scan_progress",
+            "chat_file": chat_file,
+            "status": "started",
+            "total_chunks": len(chunks),
+            "current_chunk": 0,
+            "entities_found": 0
+        })
+        
+        # Process each chunk one at a time (generator pattern — fixes memory leak)
         all_entities = {
             'npcs': [],
             'factions': [],
@@ -158,10 +204,15 @@ async def run_scan(chat_file: str, character_file: str, force_rescan: bool = Fal
                 # Extract entities from this chunk
                 chunk_entities = await extractor.extract_entities(chunk_texts)
                 
+                # Run hallucination detection on this chunk
+                source_text = "\n".join(chunk_texts)
+                chunk_entities = hallucination_detector.filter_hallucinations(
+                    chunk_entities, source_text
+                )
+                
                 # Merge with existing entities (avoid duplicates)
                 for entity_type, entity_list in chunk_entities.items():
                     for entity in entity_list:
-                        # Check if entity already found
                         existing = next(
                             (e for e in all_entities.get(entity_type, []) 
                              if e.get('name', '').lower() == entity.get('name', '').lower()),
@@ -169,27 +220,46 @@ async def run_scan(chat_file: str, character_file: str, force_rescan: bool = Fal
                         )
                         
                         if existing:
-                            # Merge information (take higher confidence, combine descriptions)
                             if entity.get('confidence', 0) > existing.get('confidence', 0):
                                 existing.update(entity)
                         else:
                             all_entities[entity_type].append(entity)
                 
+                # Explicit cleanup of chunk data
+                del chunk_entities
+                del source_text
+                
             except Exception as e:
                 print(f"Error processing chunk {chunk_idx + 1}: {e}")
                 continue
+            
+            # Update running entity count and broadcast progress
+            total_entities = sum(len(v) for v in all_entities.values())
+            await broadcast_progress({
+                "type": "scan_progress",
+                "chat_file": chat_file,
+                "status": "processing",
+                "total_chunks": len(chunks),
+                "current_chunk": chunk_idx + 1,
+                "entities_found": total_entities
+            })
+            
+            # Rate limiting: pause every batch_size chunks
+            if (chunk_idx + 1) % batch_size == 0 and chunk_idx + 1 < len(chunks):
+                await asyncio.sleep(rate_limit_delay)
         
         # Count total entities found
         total_entities = sum(len(all_entities.get(t, [])) for t in all_entities.keys())
         
-        # Add entities to queue
+        # Add entities to queue (using singular type names for DB)
         char_path = f"{config.characters_dir}/{character_file}"
         source_context = f"Messages {metadata['start_index']}-{metadata['end_index']} from {chat_file}"
         
         for entity_type, entity_list in all_entities.items():
+            db_type = ENTITY_TYPE_MAP.get(entity_type, entity_type)
             for entity in entity_list:
                 await db.add_entity(
-                    entity_type=entity_type,
+                    entity_type=db_type,
                     entity_name=entity.get('name', 'Unknown'),
                     entity_data=entity,
                     target_file=char_path,
@@ -212,10 +282,20 @@ async def run_scan(chat_file: str, character_file: str, force_rescan: bool = Fal
             'completed'
         )
         
+        # Broadcast completion
+        await broadcast_progress({
+            "type": "scan_complete",
+            "chat_file": chat_file,
+            "entities_found": total_entities
+        })
+        
     except Exception as e:
         await db.add_scan_record(
             chat_file, character_file, 0, 0, 'failed', str(e)
         )
+    finally:
+        # Always release the scan lock
+        await scan_lock_manager.release_scan_lock(chat_file)
 
 # Queue endpoints
 @router.get("/queue")
@@ -228,12 +308,18 @@ async def get_queue(entity_type: Optional[str] = None):
 async def approve_entity(entity_id: int):
     """Approve an entity and apply it to the lorebook"""
     try:
-        # Get entity
-        entities = await db.get_pending_entities()
-        entity = next((e for e in entities if e['id'] == entity_id), None)
+        # Get entity directly by ID
+        entity = await db.fetch_one(
+            "SELECT * FROM entity_queue WHERE id = ? AND status = 'pending'",
+            (entity_id,)
+        )
         
         if not entity:
             raise HTTPException(status_code=404, detail="Entity not found")
+        
+        # Parse JSON data
+        import json
+        entity['entity_data'] = json.loads(entity['entity_data'])
         
         # Apply to lorebook
         updater = LorebookUpdater()
@@ -316,9 +402,31 @@ async def list_backups(file_path: Optional[str] = None):
 @router.post("/files/restore/{backup_id}")
 async def restore_backup(backup_id: int):
     """Restore from a backup"""
-    # Implementation would restore the backup file
-    # For now, return success
-    return {"status": "success", "message": "Backup restored"}
+    try:
+        # Look up the backup record
+        backups = await db.get_backups()
+        backup_record = next(
+            (b for b in backups if b['id'] == backup_id),
+            None
+        )
+        
+        if not backup_record:
+            raise HTTPException(status_code=404, detail="Backup not found")
+        
+        backup_mgr = BackupManager()
+        success = await backup_mgr.restore_backup(
+            backup_path=backup_record['backup_path'],
+            target_path=backup_record['file_path']
+        )
+        
+        if success:
+            return {"status": "success", "message": f"Restored {backup_record['file_path']} from backup"}
+        else:
+            raise HTTPException(status_code=500, detail="Restore failed")
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Chat mapping endpoints
 @router.get("/mappings")
@@ -355,17 +463,15 @@ async def get_stats():
     scans = await db.get_scan_history(1)
     last_scan = scans[0] if scans else None
     
-    # Get today's updates
-    updates = await db.get_update_history(1000)
-    today = datetime.now().date()
-    today_updates = [
-        u for u in updates
-        if datetime.fromisoformat(u['applied_at']).date() == today
-    ]
+    # Get today's update count via SQL
+    today_count_row = await db.fetch_one(
+        "SELECT COUNT(*) as cnt FROM update_history WHERE date(applied_at) = date('now')"
+    )
+    today_updates_count = today_count_row['cnt'] if today_count_row else 0
     
     return {
         "pending_count": len(pending),
-        "applied_today": len(today_updates),
+        "applied_today": today_updates_count,
         "last_scan": last_scan,
         "total_scans": len(await db.get_scan_history(1000))
     }

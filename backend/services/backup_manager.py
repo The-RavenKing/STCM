@@ -49,46 +49,6 @@ class BackupManager:
         
         return str(backup_path)
     
-    async def restore_backup(self, backup_path: str, target_path: str = None) -> bool:
-        """
-        Restore a file from backup
-        
-        Args:
-            backup_path: Path to backup file
-            target_path: Optional custom restore path (defaults to original)
-        
-        Returns:
-            Success boolean
-        """
-        backup = Path(backup_path)
-        
-        if not backup.exists():
-            raise FileNotFoundError(f"Backup not found: {backup_path}")
-        
-        # Determine target
-        if target_path is None:
-            # Extract original path from database
-            backups = await db.get_backups()
-            backup_record = next(
-                (b for b in backups if b['backup_path'] == backup_path),
-                None
-            )
-            if backup_record:
-                target_path = backup_record['file_path']
-            else:
-                raise ValueError("Cannot determine original file path")
-        
-        target = Path(target_path)
-        
-        # Create backup of current file before restoring
-        if target.exists():
-            await self.create_backup(str(target))
-        
-        # Restore
-        shutil.copy2(backup, target)
-        
-        return True
-    
     async def list_backups(
         self,
         file_path: str = None,
@@ -109,13 +69,15 @@ class BackupManager:
     
     async def cleanup_old_backups(self, retention_days: int = None):
         """
-        Remove backups older than retention period
+        Remove backups older than retention period and enforce per-file limits
         
         Args:
             retention_days: Days to keep backups (from config if not specified)
         """
         if retention_days is None:
             retention_days = config.get('auto_apply.backup_retention_days', 30)
+        
+        max_per_file = config.get('auto_apply.max_backups_per_file', 10)
         
         cutoff_date = datetime.now() - timedelta(days=retention_days)
         
@@ -124,12 +86,37 @@ class BackupManager:
         
         removed_count = 0
         
+        # Phase 1: Remove backups older than retention period
+        remaining_backups = []
         for backup in backups:
             created_at = datetime.fromisoformat(backup['created_at'])
             
             if created_at < cutoff_date:
                 # Remove file
                 backup_path = Path(backup['backup_path'])
+                if backup_path.exists():
+                    backup_path.unlink()
+                    removed_count += 1
+            else:
+                remaining_backups.append(backup)
+        
+        # Phase 2: Enforce max_backups_per_file limit
+        from collections import defaultdict
+        backups_by_file = defaultdict(list)
+        
+        for backup in remaining_backups:
+            backups_by_file[backup['file_path']].append(backup)
+        
+        for file_path, file_backups in backups_by_file.items():
+            # Sort by creation date descending (newest first)
+            file_backups.sort(
+                key=lambda b: b['created_at'],
+                reverse=True
+            )
+            
+            # Remove oldest beyond the limit
+            for old_backup in file_backups[max_per_file:]:
+                backup_path = Path(old_backup['backup_path'])
                 if backup_path.exists():
                     backup_path.unlink()
                     removed_count += 1
@@ -177,3 +164,29 @@ class BackupManager:
         
         # Compare with stored hash
         return current_hash == backup_record['file_hash']
+    
+    async def restore_backup(self, backup_path: str, target_path: str) -> bool:
+        """
+        Restore a file from its backup
+        
+        Args:
+            backup_path: Path to the backup file
+            target_path: Path where the file should be restored to
+        
+        Returns:
+            True if restore succeeded
+        """
+        backup_file = Path(backup_path)
+        target_file = Path(target_path)
+        
+        if not backup_file.exists():
+            raise FileNotFoundError(f"Backup file not found: {backup_path}")
+        
+        # Create a backup of the current file before overwriting
+        if target_file.exists():
+            await self.create_backup(str(target_file))
+        
+        # Restore
+        shutil.copy2(str(backup_file), str(target_file))
+        return True
+

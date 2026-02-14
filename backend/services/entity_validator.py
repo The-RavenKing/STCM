@@ -1,5 +1,6 @@
 from typing import Dict, List, Tuple
 from services.ollama_client import OllamaClient
+import copy
 import json
 import re
 
@@ -230,7 +231,7 @@ Generate the validation report:"""
         validation_result: Dict
     ) -> Dict:
         """Apply validation changes to entities"""
-        validated = entities.copy()
+        validated = copy.deepcopy(entities)
         
         for change in validation_result.get('changes', []):
             change_type = change.get('type')
