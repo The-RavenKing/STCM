@@ -1,6 +1,16 @@
 ollama:
   url: "http://localhost:11434"
-  model: "llama3.2"
+  
+  # Two-AI System: Separate models for reading vs coding
+  # Reader AI: Extracts entities, understands context (can be larger/smarter)
+  # Coder AI: Makes structured updates to files (can be faster/specialized)
+  reader_model: "llama3.2"        # For entity extraction
+  coder_model: "qwen2.5-coder"    # For generating file updates
+  
+  # Single model mode (set both to same model if preferred)
+  # reader_model: "llama3.2"
+  # coder_model: "llama3.2"
+  
   api_key: null
   timeout: 120
 
@@ -18,9 +28,24 @@ chat_mappings:
 
 scanning:
   schedule: "0 3 * * *"  # Cron format: Daily at 3 AM
-  messages_per_scan: 50
-  scan_recent_only: true
-  confidence_threshold: 0.7
+  
+  # Chunking Settings (prevents overwhelming smaller systems)
+  chunk_size: 20                 # Messages per chunk (adjust based on VRAM)
+  chunk_overlap: 5               # Messages to overlap between chunks (context preservation)
+  max_chunks_per_scan: 10        # Maximum chunks to process in one scan
+  
+  # Incremental scanning (only process new messages)
+  incremental_mode: true         # Only scan messages since last checkpoint
+  rescan_from_start: false       # Set true to force full rescan
+  
+  # Quality Control (optional validation phase)
+  enable_validation: false       # Have READER AI review extracted entities before coding
+  validation_mode: "smart"       # Options: "full", "smart", "conflicts_only"
+  # - full: Review all entities (slow but thorough)
+  # - smart: Only review entities with confidence < 0.8 (balanced)
+  # - conflicts_only: Only review when duplicates/conflicts detected (fast)
+  
+  confidence_threshold: 0.7      # Entity confidence threshold (0-1)
 
 auto_apply:
   enabled: false

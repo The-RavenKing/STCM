@@ -20,7 +20,7 @@ class ConfigUpdate(BaseModel):
 
 class ScanRequest(BaseModel):
     chat_file: str
-    messages_limit: Optional[int] = 50
+    force_rescan: Optional[bool] = False  # Set true to ignore checkpoint
 
 class EntityApproval(BaseModel):
     action: str  # 'approve' or 'reject'
@@ -87,7 +87,7 @@ async def test_ollama():
 # Scan endpoints
 @router.post("/scan/manual")
 async def manual_scan(request: ScanRequest, background_tasks: BackgroundTasks):
-    """Manually trigger a scan of a chat file"""
+    """Manually trigger a scan of a chat file with chunking"""
     try:
         # Get chat mapping
         mapping = await db.get_chat_mapping(request.chat_file)
@@ -102,49 +102,91 @@ async def manual_scan(request: ScanRequest, background_tasks: BackgroundTasks):
         else:
             character_file = mapping["character_file"]
         
-        # Run scan in background
+        # Run scan in background with chunking
         background_tasks.add_task(
             run_scan,
             request.chat_file,
             character_file,
-            request.messages_limit
+            request.force_rescan
         )
         
         return {
             "status": "started",
-            "message": f"Scan started for {request.chat_file}"
+            "message": f"Scan started for {request.chat_file} (chunked processing)",
+            "force_rescan": request.force_rescan
         }
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-async def run_scan(chat_file: str, character_file: str, messages_limit: int):
-    """Background task to run a scan"""
+async def run_scan(chat_file: str, character_file: str, force_rescan: bool = False):
+    """Background task to run a scan with chunking"""
     try:
-        # Read chat messages
+        # Initialize services
         reader = ChatReader(config.chats_dir)
-        messages = reader.read_chat(chat_file, last_n=messages_limit)
-        message_texts = reader.extract_text_only(messages)
+        from services.chunk_processor import ChunkProcessor
+        chunk_processor = ChunkProcessor(reader)
+        extractor = EntityExtractor(ollama_client)
         
-        if not message_texts:
+        # Get chunks to process (with checkpoint tracking)
+        chunks, metadata = await chunk_processor.get_chunks_to_process(
+            chat_file,
+            force_rescan=force_rescan
+        )
+        
+        if not chunks:
             await db.add_scan_record(
-                chat_file, character_file, 0, 0, 'failed',
-                "No messages found to scan"
+                chat_file, character_file, 0, 0, 'completed',
+                "No new messages to scan (checkpoint up to date)"
             )
             return
         
-        # Extract entities
-        extractor = EntityExtractor(ollama_client)
-        entities = await extractor.extract_entities(message_texts)
+        # Process each chunk
+        all_entities = {
+            'npcs': [],
+            'factions': [],
+            'locations': [],
+            'items': [],
+            'aliases': [],
+            'stats': []
+        }
+        
+        total_entities = 0
+        
+        for chunk_idx, chunk_texts in enumerate(chunks):
+            try:
+                # Extract entities from this chunk
+                chunk_entities = await extractor.extract_entities(chunk_texts)
+                
+                # Merge with existing entities (avoid duplicates)
+                for entity_type, entity_list in chunk_entities.items():
+                    for entity in entity_list:
+                        # Check if entity already found
+                        existing = next(
+                            (e for e in all_entities.get(entity_type, []) 
+                             if e.get('name', '').lower() == entity.get('name', '').lower()),
+                            None
+                        )
+                        
+                        if existing:
+                            # Merge information (take higher confidence, combine descriptions)
+                            if entity.get('confidence', 0) > existing.get('confidence', 0):
+                                existing.update(entity)
+                        else:
+                            all_entities[entity_type].append(entity)
+                
+            except Exception as e:
+                print(f"Error processing chunk {chunk_idx + 1}: {e}")
+                continue
         
         # Count total entities found
-        total_entities = sum(len(entities.get(t, [])) for t in entities.keys())
+        total_entities = sum(len(all_entities.get(t, [])) for t in all_entities.keys())
         
         # Add entities to queue
         char_path = f"{config.characters_dir}/{character_file}"
-        source_context = f"Messages from {chat_file}"
+        source_context = f"Messages {metadata['start_index']}-{metadata['end_index']} from {chat_file}"
         
-        for entity_type, entity_list in entities.items():
+        for entity_type, entity_list in all_entities.items():
             for entity in entity_list:
                 await db.add_entity(
                     entity_type=entity_type,
@@ -155,10 +197,18 @@ async def run_scan(chat_file: str, character_file: str, messages_limit: int):
                     confidence_score=entity.get('confidence', 0.5)
                 )
         
+        # Update checkpoint
+        await chunk_processor.update_checkpoint(
+            chat_file,
+            metadata['end_index'],
+            metadata['total_messages']
+        )
+        
         # Record scan
         await db.add_scan_record(
             chat_file, character_file,
-            len(message_texts), total_entities,
+            metadata['end_index'] - metadata['start_index'],
+            total_entities,
             'completed'
         )
         

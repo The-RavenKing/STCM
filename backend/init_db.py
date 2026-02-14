@@ -103,6 +103,18 @@ def init_database(db_path: str = "data/stcm.db"):
     )
     """)
     
+    # Processing checkpoints (track what's been scanned)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS processing_checkpoints (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chat_file TEXT NOT NULL UNIQUE,
+        last_processed_index INTEGER NOT NULL DEFAULT 0,
+        last_processed_timestamp TEXT,
+        total_messages INTEGER,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    
     # Create indexes
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_entity_status ON entity_queue(status)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_entity_type ON entity_queue(entity_type)")

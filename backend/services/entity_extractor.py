@@ -26,7 +26,7 @@ class EntityExtractor:
     
     async def extract_entities(self, messages: List[str]) -> Dict:
         """
-        Extract all entities from chat messages
+        Extract all entities from chat messages using READER AI
         
         Args:
             messages: List of message strings from chat
@@ -44,8 +44,8 @@ class EntityExtractor:
         
         prompt = prompt_template.format(chat_text=chat_text)
         
-        # Get LLM response
-        response = await self.ollama.generate(prompt, temperature=0.3)
+        # Get LLM response using READER model
+        response = await self.ollama.generate_with_reader(prompt, temperature=0.3)
         
         # Parse JSON response
         entities = self._parse_json_response(response)

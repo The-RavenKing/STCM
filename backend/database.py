@@ -1,7 +1,9 @@
 import aiosqlite
 import json
+import shutil
 from typing import List, Dict, Optional
 from datetime import datetime
+from pathlib import Path
 from config import config
 
 class Database:
@@ -9,10 +11,37 @@ class Database:
     
     def __init__(self, db_path: str = None):
         self.db_path = db_path or config.db_path
+        
+    async def integrity_check(self) -> bool:
+        """Check database integrity"""
+        try:
+            async with aiosqlite.connect(self.db_path) as db:
+                async with db.execute("PRAGMA integrity_check") as cursor:
+                    result = await cursor.fetchone()
+                    return result[0] == 'ok'
+        except:
+            return False
+    
+    async def backup_database(self) -> str:
+        """Create database backup"""
+        backup_dir = Path("data/backups/db")
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = backup_dir / f"stcm_{timestamp}.db"
+        
+        shutil.copy2(self.db_path, backup_path)
+        return str(backup_path)
     
     async def execute(self, query: str, params: tuple = ()):
-        """Execute a single query"""
+        """Execute a single query with automatic backup before critical operations"""
+        # Backup before destructive operations
+        if any(keyword in query.upper() for keyword in ['DELETE', 'DROP', 'TRUNCATE']):
+            await self.backup_database()
+        
         async with aiosqlite.connect(self.db_path) as db:
+            # Enable WAL mode for better concurrency and crash recovery
+            await db.execute("PRAGMA journal_mode=WAL")
             await db.execute(query, params)
             await db.commit()
     
@@ -229,6 +258,41 @@ class Database:
         """Get all chat mappings"""
         query = "SELECT * FROM chat_mappings ORDER BY updated_at DESC"
         return await self.fetch_all(query)
+    
+    # Processing Checkpoint Operations
+    
+    async def get_checkpoint(self, chat_file: str) -> Optional[Dict]:
+        """Get last processing checkpoint for a chat file"""
+        query = "SELECT * FROM processing_checkpoints WHERE chat_file = ?"
+        return await self.fetch_one(query, (chat_file,))
+    
+    async def update_checkpoint(
+        self,
+        chat_file: str,
+        last_processed_index: int,
+        last_processed_timestamp: str = None,
+        total_messages: int = None
+    ):
+        """Update or create processing checkpoint"""
+        query = """
+        INSERT INTO processing_checkpoints (
+            chat_file, last_processed_index, last_processed_timestamp, total_messages
+        ) VALUES (?, ?, ?, ?)
+        ON CONFLICT(chat_file) DO UPDATE SET
+            last_processed_index = excluded.last_processed_index,
+            last_processed_timestamp = excluded.last_processed_timestamp,
+            total_messages = excluded.total_messages,
+            updated_at = CURRENT_TIMESTAMP
+        """
+        await self.execute(
+            query,
+            (chat_file, last_processed_index, last_processed_timestamp, total_messages)
+        )
+    
+    async def reset_checkpoint(self, chat_file: str):
+        """Reset checkpoint to rescan entire chat"""
+        query = "DELETE FROM processing_checkpoints WHERE chat_file = ?"
+        await self.execute(query, (chat_file,))
 
 # Global database instance
 db = Database()
