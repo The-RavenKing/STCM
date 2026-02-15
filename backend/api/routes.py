@@ -459,7 +459,50 @@ async def verify_path(request: VerifyPathRequest):
         
         if request.type == 'chats':
             pattern = "*.jsonl"
+        elif request.type == 'characters':
+             # SillyTavern characters can be JSON or PNG/WEBP cards
+            files = [str(f.relative_to(path_obj)) for f in path_obj.rglob("*.json")]
+            files.extend([str(f.relative_to(path_obj)) for f in path_obj.rglob("*.png")])
+            files.extend([str(f.relative_to(path_obj)) for f in path_obj.rglob("*.webp")])
             
+            count = len(files)
+            if count == 0:
+                 return {
+                    "status": "warning", 
+                    "message": f"⚠ Directory exists but no characters (.json/.png/.webp) found",
+                    "count": 0,
+                    "files": []
+                }
+            
+            return {
+                "status": "success",
+                "message": f"✓ Valid! Found {count} files",
+                "count": count,
+                "files": files[:5]
+            }
+            
+        elif request.type == 'personas':
+            # Personas can also be JSON or PNG/WEBP
+            files = [str(f.relative_to(path_obj)) for f in path_obj.rglob("*.json")]
+            files.extend([str(f.relative_to(path_obj)) for f in path_obj.rglob("*.png")])
+            files.extend([str(f.relative_to(path_obj)) for f in path_obj.rglob("*.webp")])
+            
+            count = len(files)
+            if count == 0:
+                 return {
+                    "status": "warning", 
+                    "message": f"⚠ Directory exists but no personas (.json/.png/.webp) found",
+                    "count": 0,
+                    "files": []
+                }
+            
+            return {
+                "status": "success",
+                "message": f"✓ Valid! Found {count} files",
+                "count": count,
+                "files": files[:5]
+            }
+
         # Recursive scan with limit
         count = 0
         sample_files = []
