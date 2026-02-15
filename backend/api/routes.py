@@ -843,16 +843,60 @@ async def save_character_file(request: CharacterSaveRequest):
 
 @router.get("/character/load")
 async def load_character(filename: str):
-    """Load character data from a JSON file"""
+    """Load character data from a JSON or PNG/WebP character card"""
     try:
         path = Path(config.characters_dir) / filename
         
         if not path.exists():
             raise HTTPException(status_code=404, detail="Character file not found")
+        
+        suffix = path.suffix.lower()
+        
+        if suffix == '.json':
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data
+        
+        elif suffix == '.png':
+            # SillyTavern PNG cards: character JSON is base64-encoded in a tEXt chunk with keyword "chara"
+            import base64
+            import struct
             
-        with open(path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            return data
+            with open(path, 'rb') as f:
+                # Skip PNG signature (8 bytes)
+                f.read(8)
+                
+                while True:
+                    # Read chunk: length (4 bytes) + type (4 bytes)
+                    chunk_header = f.read(8)
+                    if len(chunk_header) < 8:
+                        break
+                    
+                    length = struct.unpack('>I', chunk_header[:4])[0]
+                    chunk_type = chunk_header[4:8].decode('ascii', errors='ignore')
+                    chunk_data = f.read(length)
+                    f.read(4)  # Skip CRC
+                    
+                    if chunk_type == 'tEXt':
+                        # tEXt chunk: keyword\0value
+                        null_idx = chunk_data.index(b'\x00')
+                        keyword = chunk_data[:null_idx].decode('ascii')
+                        value = chunk_data[null_idx + 1:]
+                        
+                        if keyword == 'chara':
+                            decoded = base64.b64decode(value).decode('utf-8')
+                            return json.loads(decoded)
+                    
+                    elif chunk_type == 'IEND':
+                        break
+            
+            raise HTTPException(status_code=422, detail="PNG file does not contain character card data (no 'chara' tEXt chunk)")
+        
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported file format: {suffix}")
+    
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

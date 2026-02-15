@@ -97,19 +97,20 @@ async function loadCharacterList() {
 
         select.innerHTML = '<option value="">Select a character...</option>';
 
-        // Filter to JSON files only
-        const jsonFiles = (result.characters || []).filter(f => f.endsWith('.json'));
+        const files = result.characters || [];
 
-        if (jsonFiles.length === 0) {
+        if (files.length === 0) {
             select.innerHTML = '<option value="">No characters found — check Settings</option>';
             showNotification('No character files found. Ensure your Characters directory is configured in Settings.', 'warning');
             return;
         }
 
-        jsonFiles.forEach(file => {
+        files.forEach(file => {
             const option = document.createElement('option');
             option.value = file;
-            option.textContent = file;
+            // Show a cleaner display name (strip extension, replace underscores)
+            const displayName = file.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
+            option.textContent = displayName;
             select.appendChild(option);
         });
     } catch (error) {
