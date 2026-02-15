@@ -60,6 +60,10 @@ class LorebookBuildRequest(BaseModel):
 class LorebookCreateRequest(BaseModel):
     name: str
 
+class VerifyPathRequest(BaseModel):
+    path: str
+    type: str  # 'chats', 'characters', 'lorebooks', 'personas'
+
 # Config endpoints
 @router.get("/config")
 async def get_config():
@@ -430,6 +434,61 @@ async def list_backups(file_path: Optional[str] = None):
     """List available backups"""
     backups = await db.get_backups(file_path)
     return {"backups": backups, "count": len(backups)}
+
+@router.post("/files/verify-path")
+async def verify_path(request: VerifyPathRequest):
+    """Verify a directory path and list found files recursively"""
+    try:
+        path_obj = Path(request.path)
+        
+        # basic checks
+        if not path_obj.exists():
+            return {"status": "error", "message": "❌ Path does not exist on server"}
+        if not path_obj.is_dir():
+            return {"status": "error", "message": "❌ Path exists but is not a directory"}
+            
+        # Permission check & file scan
+        files = []
+        pattern = "*.json"  # Default
+        
+        if request.type == 'chats':
+            pattern = "*.jsonl"
+            
+        # Recursive scan with limit
+        count = 0
+        sample_files = []
+        
+        try:
+            # Use distinct loop to avoid building massive list in memory if folder is huge
+            for f in path_obj.rglob(pattern):
+                count += 1
+                if count <= 5:
+                    sample_files.append(str(f.relative_to(path_obj)))
+                
+                # Safety cap for very large folders
+                if count >= 10000:
+                    break
+                    
+            if count == 0:
+                return {
+                    "status": "warning", 
+                    "message": f"⚠ Directory exists but no {pattern} files found",
+                    "count": 0,
+                    "files": []
+                }
+                
+            return {
+                "status": "success",
+                "message": f"✓ Valid! Found {count}+ files",
+                "count": count,
+                "files": sample_files
+            }
+            
+        except PermissionError:
+             return {"status": "error", "message": "❌ Permission denied accessing this directory"}
+             
+    except Exception as e:
+        return {"status": "error", "message": f"Error: {str(e)}"}
 
 @router.post("/files/restore/{backup_id}")
 async def restore_backup(backup_id: int):

@@ -77,6 +77,58 @@ async function loadSettings() {
     }
 }
 
+async function verifyPath(type, inputId) {
+    const input = document.getElementById(inputId);
+    const path = input.value.trim();
+    const resultSpan = document.getElementById(inputId + '-result');
+
+    if (!path) {
+        showNotification('Please enter a path first', 'warning');
+        return;
+    }
+
+    // Create result span if missing
+    let display = resultSpan;
+    if (!display) {
+        display = document.createElement('div');
+        display.id = inputId + '-result';
+        display.className = 'verify-result';
+        input.parentNode.appendChild(display);
+    }
+
+    display.textContent = 'Checking...';
+    display.className = 'verify-result';
+
+    try {
+        const response = await API.request('/files/verify-path', 'POST', {
+            path: path,
+            type: type
+        });
+
+        display.textContent = response.message;
+
+        if (response.status === 'success') {
+            display.className = 'verify-result success';
+
+            // Show sample files in tooltip or console
+            if (response.files && response.files.length > 0) {
+                const samples = response.files.join('\n');
+                display.title = `Found:\n${samples}...`;
+            }
+        } else if (response.status === 'warning') {
+            display.className = 'verify-result warning';
+        } else {
+            console.error(response);
+            display.className = 'verify-result error';
+        }
+
+    } catch (error) {
+        console.error(error);
+        display.textContent = 'Error: ' + error.message;
+        display.className = 'verify-result error';
+    }
+}
+
 async function saveSettings(event) {
     event.preventDefault();
 

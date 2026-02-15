@@ -68,29 +68,45 @@
 
                     <div class="form-group">
                         <label for="chats-dir">Chat Logs Directory:</label>
-                        <input type="text" id="chats-dir" name="sillytavern.chats_dir"
-                            placeholder="/path/to/SillyTavern/data/default-user/chats">
+                        <div class="input-with-btn">
+                            <input type="text" id="chats-dir" name="sillytavern.chats_dir"
+                                placeholder="/path/to/SillyTavern/data/default-user/chats">
+                            <button type="button" class="btn-secondary btn-small"
+                                onclick="verifyPath('chats', 'chats-dir')">Verify</button>
+                        </div>
                         <small>Where your .jsonl chat files are stored</small>
                     </div>
 
                     <div class="form-group">
                         <label for="characters-dir">Characters Directory:</label>
-                        <input type="text" id="characters-dir" name="sillytavern.characters_dir"
-                            placeholder="/path/to/SillyTavern/data/default-user/characters">
+                        <div class="input-with-btn">
+                            <input type="text" id="characters-dir" name="sillytavern.characters_dir"
+                                placeholder="/path/to/SillyTavern/data/default-user/characters">
+                            <button type="button" class="btn-secondary btn-small"
+                                onclick="verifyPath('characters', 'characters-dir')">Verify</button>
+                        </div>
                         <small>Where character .json files are stored</small>
                     </div>
 
                     <div class="form-group">
                         <label for="personas-dir">Personas Directory:</label>
-                        <input type="text" id="personas-dir" name="sillytavern.personas_dir"
-                            placeholder="/path/to/SillyTavern/data/default-user/personas">
+                        <div class="input-with-btn">
+                            <input type="text" id="personas-dir" name="sillytavern.personas_dir"
+                                placeholder="/path/to/SillyTavern/data/default-user/personas">
+                            <button type="button" class="btn-secondary btn-small"
+                                onclick="verifyPath('personas', 'personas-dir')">Verify</button>
+                        </div>
                         <small>Where persona files are stored</small>
                     </div>
 
                     <div class="form-group">
                         <label for="lorebooks-dir">Lorebooks Directory:</label>
-                        <input type="text" id="lorebooks-dir" name="sillytavern.lorebooks_dir"
-                            placeholder="/path/to/SillyTavern/data/default-user/worlds">
+                        <div class="input-with-btn">
+                            <input type="text" id="lorebooks-dir" name="sillytavern.lorebooks_dir"
+                                placeholder="/path/to/SillyTavern/data/default-user/worlds">
+                            <button type="button" class="btn-secondary btn-small"
+                                onclick="verifyPath('lorebooks', 'lorebooks-dir')">Verify</button>
+                        </div>
                         <small>Where standalone lorebook (World Info) files are stored</small>
                     </div>
                 </section>

@@ -313,6 +313,48 @@ nav a.active {
     border: 1px solid var(--border-color);
 }
 
+.form-group input[type="text"],
+.form-group input[type="password"],
+.form-group input[type="number"],
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    font-size: 1rem;
+}
+
+/* Input with button grouping */
+.input-with-btn {
+    display: flex;
+    gap: 10px;
+}
+
+.input-with-btn input {
+    flex: 1;
+}
+
+.verify-result {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.verify-result.success {
+    color: var(--success-color);
+}
+
+.verify-result.warning {
+    color: var(--warning-color);
+}
+
+.verify-result.error {
+    color: var(--danger-color);
+}
+
 .input-select,
 .input-number,
 input[type="text"],
