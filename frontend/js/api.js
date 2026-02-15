@@ -108,6 +108,15 @@ class API {
         return await this._handleResponse(response);
     }
 
+    static async verifyPath(path, type) {
+        const response = await fetch(`${API_BASE}/files/verify-path`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path, type })
+        });
+        return await this._handleResponse(response);
+    }
+
     // Mappings
     static async getMappings() {
         const response = await fetch(`${API_BASE}/mappings`);

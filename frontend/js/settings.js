@@ -100,10 +100,7 @@ async function verifyPath(type, inputId) {
     display.className = 'verify-result';
 
     try {
-        const response = await API.request('/files/verify-path', 'POST', {
-            path: path,
-            type: type
-        });
+        const response = await API.verifyPath(path, type);
 
         display.textContent = response.message;
 
