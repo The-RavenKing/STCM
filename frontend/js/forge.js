@@ -91,22 +91,31 @@ async function saveCharacter() {
 // ──────────────────────────────────────────────
 
 async function loadCharacterList() {
+    const select = document.getElementById('modify-select');
     try {
         const result = await API.listCharacters();
-        const select = document.getElementById('modify-select');
 
         select.innerHTML = '<option value="">Select a character...</option>';
-        result.characters.forEach(file => {
-            // Only show JSON files preferably, but API returns all
-            if (file.endsWith('.json')) {
-                const option = document.createElement('option');
-                option.value = file;
-                option.textContent = file;
-                select.appendChild(option);
-            }
+
+        // Filter to JSON files only
+        const jsonFiles = (result.characters || []).filter(f => f.endsWith('.json'));
+
+        if (jsonFiles.length === 0) {
+            select.innerHTML = '<option value="">No characters found — check Settings</option>';
+            showNotification('No character files found. Ensure your Characters directory is configured in Settings.', 'warning');
+            return;
+        }
+
+        jsonFiles.forEach(file => {
+            const option = document.createElement('option');
+            option.value = file;
+            option.textContent = file;
+            select.appendChild(option);
         });
     } catch (error) {
         console.error('Error loading characters:', error);
+        select.innerHTML = '<option value="">Error loading characters</option>';
+        showNotification('Failed to load character list: ' + error.message, 'error');
     }
 }
 
