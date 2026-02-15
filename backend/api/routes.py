@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from datetime import datetime
+from pathlib import Path
 
 from config import config
 from database import db
