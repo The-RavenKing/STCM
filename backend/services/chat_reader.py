@@ -14,7 +14,7 @@ class ChatReader:
         if not self.chats_dir.exists():
             return []
         
-        return [f.name for f in self.chats_dir.glob("*.jsonl")]
+        return [str(f.relative_to(self.chats_dir)) for f in self.chats_dir.rglob("*.jsonl")]
     
     def read_chat(self, chat_file: str, last_n: int = None) -> List[Dict]:
         """
@@ -136,15 +136,17 @@ class ChatReader:
         Try to determine which character this chat is with
         
         Args:
-            chat_file: Name of the chat file
+            chat_file: Name of the chat file (may include subdirectory path)
         
         Returns:
             Character name or None
         """
         # Chat files are typically named: CharacterName_-_date.jsonl
         # or CharacterName.jsonl
+        # With recursive scanning, chat_file may be "subdir/CharacterName_-_date.jsonl"
         
-        base_name = chat_file.replace('.jsonl', '')
+        # Extract just the filename (ignore subdirectory)
+        base_name = Path(chat_file).stem
         
         # Try to extract character name from filename
         if '_-_' in base_name:

@@ -108,8 +108,10 @@ async def test_ollama():
     """Test Ollama connection"""
     success, message = await ollama_client.test_connection()
     
+    # Always try to get model list so frontend can populate dropdowns
+    models = await ollama_client.list_models()
+    
     if success:
-        models = await ollama_client.list_models()
         return {
             "status": "success",
             "message": message,
@@ -118,7 +120,8 @@ async def test_ollama():
     else:
         return {
             "status": "error",
-            "message": message
+            "message": message,
+            "available_models": models  # Still include models even on partial failure
         }
 
 # Scan endpoints

@@ -196,7 +196,7 @@ class LorebookBuilder:
         if lorebooks_dir:
             ldir = Path(lorebooks_dir)
             if ldir.exists():
-                for f in sorted(ldir.glob("*.json")):
+                for f in sorted(ldir.rglob("*.json")):
                     try:
                         data = json.loads(f.read_text(encoding='utf-8'))
                         entry_count = len(data.get('entries', {}))
@@ -214,7 +214,7 @@ class LorebookBuilder:
         if chars_dir:
             cdir = Path(chars_dir)
             if cdir.exists():
-                for f in sorted(cdir.glob("*.json")):
+                for f in sorted(cdir.rglob("*.json")):
                     try:
                         data = json.loads(f.read_text(encoding='utf-8'))
                         book = data.get('data', {}).get('character_book')

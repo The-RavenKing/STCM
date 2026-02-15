@@ -6,13 +6,26 @@ function escapeAttr(str) {
     return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadSettings();
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadSettings();  // Must complete first so current values are set
     loadMappings();
+    fetchModels();  // Then populate dropdowns with fresh models from Ollama
 
     // Form submit handler
     document.getElementById('settings-form').addEventListener('submit', saveSettings);
 });
+
+async function fetchModels() {
+    try {
+        const result = await API.testOllama();
+        if (result.available_models && result.available_models.length > 0) {
+            populateModelDropdowns(result.available_models);
+        }
+    } catch (error) {
+        // Silently fail — user can click Test Connection manually
+        console.log('Auto-fetch models failed (Ollama may be offline):', error.message);
+    }
+}
 
 async function loadSettings() {
     try {
@@ -195,18 +208,67 @@ async function testOllama() {
             resultEl.style.color = 'var(--success-color)';
 
             showNotification('Ollama connection successful!', 'success');
+
+            // Populate dropdowns if models are available
+            if (result.available_models && result.available_models.length > 0) {
+                populateModelDropdowns(result.available_models);
+            }
         } else {
             resultEl.textContent = '✗ Failed';
             resultEl.style.color = 'var(--danger-color)';
 
             showNotification(result.message, 'error');
+
+            // Still populate dropdowns if models available (partial connection)
+            if (result.available_models && result.available_models.length > 0) {
+                populateModelDropdowns(result.available_models);
+            }
         }
     } catch (error) {
+        console.error(error);
         resultEl.textContent = '✗ Error';
         resultEl.style.color = 'var(--danger-color)';
 
         showNotification('Failed to connect to Ollama', 'error');
     }
+}
+
+function populateModelDropdowns(models) {
+    const readerSelect = document.getElementById('ollama-model');
+    const coderSelect = document.getElementById('ollama-coder-model'); // If exists
+
+    // Save current selections
+    const currentReader = readerSelect.value;
+    const currentCoder = coderSelect ? coderSelect.value : null;
+
+    // Helper to clear and fill
+    const fillSelect = (select, currentVal) => {
+        if (!select) return;
+
+        select.innerHTML = '';
+        models.forEach(model => {
+            const name = model.name || model; // Handle object or string
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            if (name === currentVal) option.selected = true;
+            select.appendChild(option);
+        });
+
+        // Add current value if missing (custom/offline case)
+        if (currentVal && !models.some(m => (m.name || m) === currentVal)) {
+            const option = document.createElement('option');
+            option.value = currentVal;
+            option.textContent = `${currentVal} (Cached)`;
+            option.selected = true;
+            select.appendChild(option);
+        }
+    };
+
+    fillSelect(readerSelect, currentReader);
+    fillSelect(coderSelect, currentCoder);
+
+    showNotification(`Found ${models.length} models`, 'info');
 }
 
 // Notification function (same as dashboard)

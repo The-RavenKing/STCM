@@ -35,13 +35,19 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="ollama-model">Model:</label>
-                        <select id="ollama-model" name="ollama.model">
+                        <label for="ollama-model">Reader Model:</label>
+                        <select id="ollama-model" name="ollama.reader_model">
                             <option value="llama3.2">llama3.2</option>
-                            <option value="mistral">mistral</option>
-                            <option value="qwen2.5">qwen2.5</option>
-                            <option value="gemma2">gemma2</option>
                         </select>
+                        <small>Used for reading chats and extracting entities</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ollama-coder-model">Coder Model:</label>
+                        <select id="ollama-coder-model" name="ollama.coder_model">
+                            <option value="llama3.2">llama3.2</option>
+                        </select>
+                        <small>Used for generating structured lorebook entries</small>
                     </div>
 
                     <div class="form-group">

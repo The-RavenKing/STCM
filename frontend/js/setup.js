@@ -124,6 +124,11 @@ async function testConnection() {
         if (result.status === 'success') {
             el.textContent = '✓ Connected!';
             el.className = 'test-result ok';
+
+            // Populate dropdowns if models are available
+            if (result.available_models && result.available_models.length > 0) {
+                populateModelDropdowns(result.available_models);
+            }
         } else {
             el.textContent = '✗ ' + (result.message || 'Connection failed');
             el.className = 'test-result fail';
@@ -132,6 +137,44 @@ async function testConnection() {
         el.textContent = '✗ Could not reach Ollama';
         el.className = 'test-result fail';
     }
+}
+
+function populateModelDropdowns(models) {
+    const readerSelect = document.getElementById('setup-reader-model');
+    const coderSelect = document.getElementById('setup-coder-model');
+
+    // Save current selections
+    const currentReader = readerSelect.value;
+    const currentCoder = coderSelect.value;
+
+    // Helper to clear and fill
+    const fillSelect = (select, currentVal) => {
+        if (!select) return;
+
+        select.innerHTML = '';
+        models.forEach(model => {
+            const name = model.name || model; // Handle object or string
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            if (name === currentVal) option.selected = true;
+            select.appendChild(option);
+        });
+
+        // Add current value if missing (custom/offline case)
+        if (currentVal && !models.some(m => (m.name || m) === currentVal)) {
+            const option = document.createElement('option');
+            option.value = currentVal;
+            option.textContent = `${currentVal} (Cached)`;
+            option.selected = true;
+            select.appendChild(option);
+        }
+    };
+
+    fillSelect(readerSelect, currentReader);
+    fillSelect(coderSelect, currentCoder);
+
+    showNotification(`Found ${models.length} models`, 'success');
 }
 
 // ─────────────────────────────────────────
