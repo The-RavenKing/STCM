@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict
 from datetime import datetime
 from pathlib import Path
+import sys
+import os
 
 from config import config
 from database import db
@@ -442,11 +444,14 @@ async def verify_path(request: VerifyPathRequest):
     try:
         path_obj = Path(request.path)
         
+        # Diagnostics
+        server_info = f"[Server: {sys.platform}, CWD: {os.getcwd()}]"
+        
         # basic checks
         if not path_obj.exists():
-            return {"status": "error", "message": "❌ Path does not exist on server"}
+            return {"status": "error", "message": f"❌ Path not found {server_info}"}
         if not path_obj.is_dir():
-            return {"status": "error", "message": "❌ Path exists but is not a directory"}
+            return {"status": "error", "message": f"❌ Not a directory {server_info}"}
             
         # Permission check & file scan
         files = []
