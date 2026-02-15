@@ -14,13 +14,13 @@ class EntityExtractor:
     def _load_prompts(self) -> Dict[str, str]:
         """Load prompt templates from files"""
         prompts = {}
-        prompts_dir = Path("prompts")
+        # Resolve relative to project root (parent of backend/)
+        project_root = Path(__file__).resolve().parent.parent.parent
+        prompts_dir = project_root / "prompts"
         
         if prompts_dir.exists():
             for prompt_file in prompts_dir.glob("*.txt"):
-                prompt_name = prompt_file.stem
-                with open(prompt_file, 'r') as f:
-                    prompts[prompt_name] = f.read()
+                prompts[prompt_file.stem] = prompt_file.read_text(encoding='utf-8')
         
         return prompts
     

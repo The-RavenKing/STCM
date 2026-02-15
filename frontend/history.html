@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>History - STCM</title>
     <link rel="stylesheet" href="/static/css/main.css">
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -15,16 +17,17 @@
                 <a href="/static/settings.html">Settings</a>
                 <a href="/static/review.html">Review Queue</a>
                 <a href="/static/history.html" class="active">History</a>
+                <a href="/static/lorebook.html">Lorebook Builder</a>
             </nav>
         </header>
-        
+
         <main>
             <!-- Tabs -->
             <div class="tabs">
                 <button class="tab active" onclick="showTab('scans')">Scan History</button>
                 <button class="tab" onclick="showTab('updates')">Applied Updates</button>
             </div>
-            
+
             <!-- Scan History Tab -->
             <div id="scans-tab" class="tab-content active">
                 <h2>Recent Scans</h2>
@@ -32,7 +35,7 @@
                     <p class="loading">Loading scan history...</p>
                 </div>
             </div>
-            
+
             <!-- Updates History Tab -->
             <div id="updates-tab" class="tab-content">
                 <h2>Applied Updates</h2>
@@ -42,8 +45,9 @@
             </div>
         </main>
     </div>
-    
+
     <script src="/static/js/api.js"></script>
     <script src="/static/js/history.js"></script>
 </body>
+
 </html>

@@ -32,6 +32,7 @@ async function loadSettings() {
             document.getElementById('chats-dir').value = config.sillytavern.chats_dir || '';
             document.getElementById('characters-dir').value = config.sillytavern.characters_dir || '';
             document.getElementById('personas-dir').value = config.sillytavern.personas_dir || '';
+            document.getElementById('lorebooks-dir').value = config.sillytavern.lorebooks_dir || '';
         }
 
         if (config.scanning) {

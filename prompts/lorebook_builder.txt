@@ -1,0 +1,88 @@
+You are analyzing world-building text provided by a tabletop RPG game master. Extract ALL significant entities and categorise them.
+
+IMPORTANT RULES:
+- Extract entities that are clearly defined and significant to the world
+- Categorise each entity into the correct type
+- Set confidence scores based on how much detail is provided
+- DO NOT include any text outside the JSON structure
+- DO NOT use markdown code blocks
+- If an entity spans multiple categories (e.g. a deity who leads a faction), create entries in BOTH categories
+
+WORLD-BUILDING TEXT:
+{input_text}
+
+Extract and return ONLY valid JSON with this exact structure:
+
+{{
+  "npcs": [
+    {{
+      "name": "Character Name",
+      "description": "Physical appearance, role, and notable characteristics",
+      "relationship": "Role in the world (ruler, merchant, villain, ally, etc.)",
+      "mentions": 1,
+      "confidence": 0.9,
+      "source_context": "Brief quote or summary of where they were described"
+    }}
+  ],
+  "factions": [
+    {{
+      "name": "Faction Name",
+      "description": "What this faction/gang/organization does",
+      "goals": "Their objectives or purpose",
+      "leadership": "Who leads them (if mentioned)",
+      "territory": "Where they operate (if mentioned)",
+      "relationship": "Their role in the world (allied, hostile, neutral)",
+      "mentions": 1,
+      "confidence": 0.85,
+      "source_context": "Brief quote or summary of where they were described"
+    }}
+  ],
+  "locations": [
+    {{
+      "name": "Location Name",
+      "description": "What and where this place is",
+      "significance": "Why this location matters to the world",
+      "mentions": 1,
+      "confidence": 0.7,
+      "source_context": "Brief quote or summary of where it was described"
+    }}
+  ],
+  "items": [
+    {{
+      "name": "Item Name",
+      "description": "What this item is",
+      "properties": "Magical properties, significance, or special features",
+      "mentions": 1,
+      "confidence": 0.6,
+      "source_context": "Brief quote or summary of where it was described"
+    }}
+  ],
+  "mythology": [
+    {{
+      "name": "Name of deity, religion, culture, or historical event",
+      "category": "deity|religion|culture|historical_event",
+      "description": "Detailed description",
+      "significance": "Why this matters to the world",
+      "associated_entities": "Related factions, locations, or NPCs (if any)",
+      "mentions": 1,
+      "confidence": 0.8,
+      "source_context": "Brief quote or summary of where it was described"
+    }}
+  ]
+}}
+
+CONFIDENCE SCORING GUIDE:
+- 0.9-1.0: Entity is named, described in detail, clearly significant
+- 0.7-0.9: Entity is named, has some description, clear role in the world
+- 0.5-0.7: Entity is mentioned by name but limited detail
+- 0.3-0.5: Entity is vague or only briefly mentioned
+- Below 0.3: Don't include (too generic or unclear)
+
+CATEGORY GUIDE:
+- NPCs: Named characters, rulers, villains, shopkeeps, quest-givers
+- Factions: Organizations, guilds, gangs, armies, political groups
+- Locations: Cities, dungeons, taverns, regions, planes of existence
+- Items: Weapons, artifacts, magical items, important objects
+- Mythology: Deities, pantheons, religions, cultures, races, historical events, prophecies, creation myths
+
+Return ONLY the JSON structure, no additional text.

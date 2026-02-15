@@ -48,7 +48,7 @@ python backend/init_db.py
 python backend/main.py
 ```
 
-Open your browser to `http://localhost:8000`
+Open your browser to `http://localhost:7847`
 
 ---
 
@@ -186,7 +186,7 @@ Restore from Settings > File Management > Backups
 
 ## API Documentation
 
-Once running, visit `http://localhost:8000/docs` for interactive API documentation.
+Once running, visit `http://localhost:7847/docs` for interactive API documentation.
 
 ---
 

@@ -528,7 +528,7 @@ nano config.yaml
 python backend/main.py
 
 # Visit
-http://localhost:8000
+http://localhost:7847
 ```
 
 ### Production Deployment
@@ -659,4 +659,4 @@ MIT License - See LICENSE file
 
 For installation instructions, see QUICK_START.md  
 For usage guide, see README.md  
-For API reference, visit http://localhost:8000/docs
+For API reference, visit http://localhost:7847/docs

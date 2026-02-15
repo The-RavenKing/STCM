@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lorebook Builder - STCM</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/lorebook.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 Lorebook Builder</h1>
+            <nav>
+                <a href="/static/index.html">Dashboard</a>
+                <a href="/static/settings.html">Settings</a>
+                <a href="/static/review.html">Review Queue <span id="queue-count" class="badge">0</span></a>
+                <a href="/static/history.html">History</a>
+                <a href="/static/lorebook.html" class="active">Lorebook Builder</a>
+            </nav>
+        </header>
+        
+        <main>
+            <!-- Target lorebook selection -->
+            <div class="action-section">
+                <h2>Target Lorebook</h2>
+                <p class="section-description">Choose an existing lorebook to add entries to, or create a new one.</p>
+                
+                <div class="target-controls">
+                    <select id="lorebook-select" class="input-select" onchange="onLorebookChange()">
+                        <option value="">Loading lorebooks...</option>
+                    </select>
+                    <button onclick="refreshLorebooks()" class="btn-secondary" title="Refresh list">🔄</button>
+                </div>
+                
+                <!-- New lorebook creation -->
+                <div id="new-lorebook-form" class="new-lorebook-form" style="display: none;">
+                    <input type="text" id="new-lorebook-name" class="input-text" placeholder="Enter lorebook name...">
+                    <button onclick="createNewLorebook()" class="btn-primary">📁 Create Lorebook</button>
+                </div>
+                
+                <!-- Lorebook info -->
+                <div id="lorebook-info" class="lorebook-info" style="display: none;">
+                    <span id="lorebook-type" class="status-badge"></span>
+                    <span id="lorebook-entries">0 entries</span>
+                </div>
+            </div>
+            
+            <!-- Input mode toggle -->
+            <div class="action-section">
+                <h2>Input Mode</h2>
+                <div class="mode-toggle">
+                    <button id="btn-freeform" class="mode-btn active" onclick="switchMode('freeform')">
+                        📝 Freeform
+                    </button>
+                    <button id="btn-structured" class="mode-btn" onclick="switchMode('structured')">
+                        📋 Structured
+                    </button>
+                </div>
+                <p id="mode-description" class="section-description">
+                    Paste or type your world-building text in one box. The AI will categorise it automatically.
+                </p>
+            </div>
+            
+            <!-- Freeform input -->
+            <div id="freeform-section" class="action-section">
+                <h2>World-Building Text</h2>
+                <p class="section-description">Describe your world, characters, factions, locations, mythology — anything you want in the lorebook.</p>
+                <textarea id="freeform-input" class="lorebook-textarea" rows="12" 
+                    placeholder="Example: The Kingdom of Valdris is ruled by King Aldric the Third, a shrewd but aging monarch who has held the throne for 32 years. His court is divided between the loyalist faction, known as the Silver Council, and the reformists called the Dawn Compact..."></textarea>
+                <div class="char-count"><span id="freeform-count">0</span> characters</div>
+            </div>
+            
+            <!-- Structured input -->
+            <div id="structured-section" class="action-section" style="display: none;">
+                <h2>Categorised Input</h2>
+                <p class="section-description">Enter information for each category separately. Leave any section blank to skip it.</p>
+                
+                <div class="category-group">
+                    <label class="category-label">👤 People / NPCs</label>
+                    <textarea id="cat-people" class="category-textarea" rows="4" 
+                        placeholder="Describe named characters, rulers, villains, merchants, quest-givers..."></textarea>
+                </div>
+                
+                <div class="category-group">
+                    <label class="category-label">⚔️ Factions</label>
+                    <textarea id="cat-factions" class="category-textarea" rows="4" 
+                        placeholder="Describe organizations, guilds, gangs, armies, political groups..."></textarea>
+                </div>
+                
+                <div class="category-group">
+                    <label class="category-label">🗺️ Places</label>
+                    <textarea id="cat-places" class="category-textarea" rows="4" 
+                        placeholder="Describe cities, dungeons, taverns, regions, planes of existence..."></textarea>
+                </div>
+                
+                <div class="category-group">
+                    <label class="category-label">🏺 Items</label>
+                    <textarea id="cat-items" class="category-textarea" rows="4" 
+                        placeholder="Describe weapons, artifacts, magical items, important objects..."></textarea>
+                </div>
+                
+                <div class="category-group">
+                    <label class="category-label">🌟 Mythology</label>
+                    <small class="category-hint">Deities, religions, cultures, races, historical events, prophecies</small>
+                    <textarea id="cat-mythology" class="category-textarea" rows="4" 
+                        placeholder="Describe gods, pantheons, creation myths, historical wars, cultural traditions..."></textarea>
+                </div>
+            </div>
+            
+            <!-- Submit -->
+            <div class="action-section submit-section">
+                <button id="btn-submit" onclick="submitBuild()" class="btn-primary btn-large" disabled>
+                    🧠 Process with AI
+                </button>
+                <p class="section-description">Entities will be extracted and sent to the Review Queue for your approval before being added to the lorebook.</p>
+            </div>
+            
+            <!-- Progress / Results -->
+            <div id="progress-section" class="action-section" style="display: none;">
+                <h2>Processing</h2>
+                <div id="progress-content" class="progress-area">
+                    <div class="spinner"></div>
+                    <p id="progress-message">Starting AI processing...</p>
+                </div>
+            </div>
+            
+            <div id="results-section" class="action-section" style="display: none;">
+                <h2>Results</h2>
+                <div id="results-content" class="results-area"></div>
+            </div>
+        </main>
+        
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span id="ws-status" class="ws-indicator">●</span>
+            <span id="status-message">Connecting...</span>
+        </div>
+    </div>
+    
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/lorebook.js"></script>
+</body>
+</html>

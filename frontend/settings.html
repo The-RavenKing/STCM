@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>STCM Settings</title>
     <link rel="stylesheet" href="/static/css/main.css">
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -15,23 +17,23 @@
                 <a href="/static/settings.html" class="active">Settings</a>
                 <a href="/static/review.html">Review Queue</a>
                 <a href="/static/history.html">History</a>
+                <a href="/static/lorebook.html">Lorebook Builder</a>
             </nav>
         </header>
-        
+
         <main>
             <form id="settings-form">
                 <!-- Ollama Configuration -->
                 <section class="settings-section">
                     <h2>🤖 Ollama Configuration</h2>
-                    
+
                     <div class="form-group">
                         <label for="ollama-url">Ollama URL:</label>
-                        <input type="text" id="ollama-url" name="ollama.url" 
-                               value="http://localhost:11434"
-                               placeholder="http://localhost:11434">
+                        <input type="text" id="ollama-url" name="ollama.url" value="http://localhost:11434"
+                            placeholder="http://localhost:11434">
                         <small>Default Ollama API endpoint</small>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="ollama-model">Model:</label>
                         <select id="ollama-model" name="ollama.model">
@@ -41,45 +43,52 @@
                             <option value="gemma2">gemma2</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="ollama-api-key">API Key (optional):</label>
-                        <input type="password" id="ollama-api-key" name="ollama.api_key" 
-                               placeholder="Leave empty if not required">
+                        <input type="password" id="ollama-api-key" name="ollama.api_key"
+                            placeholder="Leave empty if not required">
                     </div>
-                    
+
                     <button type="button" onclick="testOllama()" class="btn-secondary">
                         Test Connection
                     </button>
                     <span id="ollama-test-result"></span>
                 </section>
-                
+
                 <!-- SillyTavern Paths -->
                 <section class="settings-section">
                     <h2>📁 SillyTavern Directories</h2>
-                    
+
                     <div class="form-group">
                         <label for="chats-dir">Chat Logs Directory:</label>
-                        <input type="text" id="chats-dir" name="sillytavern.chats_dir" 
-                               placeholder="/path/to/SillyTavern/data/default-user/chats">
+                        <input type="text" id="chats-dir" name="sillytavern.chats_dir"
+                            placeholder="/path/to/SillyTavern/data/default-user/chats">
                         <small>Where your .jsonl chat files are stored</small>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="characters-dir">Characters Directory:</label>
                         <input type="text" id="characters-dir" name="sillytavern.characters_dir"
-                               placeholder="/path/to/SillyTavern/data/default-user/characters">
+                            placeholder="/path/to/SillyTavern/data/default-user/characters">
                         <small>Where character .json files are stored</small>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="personas-dir">Personas Directory:</label>
                         <input type="text" id="personas-dir" name="sillytavern.personas_dir"
-                               placeholder="/path/to/SillyTavern/data/default-user/personas">
+                            placeholder="/path/to/SillyTavern/data/default-user/personas">
                         <small>Where persona files are stored</small>
                     </div>
+
+                    <div class="form-group">
+                        <label for="lorebooks-dir">Lorebooks Directory:</label>
+                        <input type="text" id="lorebooks-dir" name="sillytavern.lorebooks_dir"
+                            placeholder="/path/to/SillyTavern/data/default-user/worlds">
+                        <small>Where standalone lorebook (World Info) files are stored</small>
+                    </div>
                 </section>
-                
+
                 <!-- Chat to Lorebook Mapping -->
                 <section class="settings-section">
                     <h2>🔗 Chat to Lorebook Mapping</h2>
@@ -87,20 +96,20 @@
                         Configure which chat files should update which character lorebooks.
                         This is essential for multi-campaign setups.
                     </p>
-                    
+
                     <div id="mappings-list" class="mappings-list">
                         <!-- Populated via JavaScript -->
                     </div>
-                    
+
                     <button type="button" onclick="addMapping()" class="btn-secondary">
                         + Add Mapping
                     </button>
                 </section>
-                
+
                 <!-- Scan Settings -->
                 <section class="settings-section">
                     <h2>🔍 Scan Settings</h2>
-                    
+
                     <div class="form-group">
                         <label for="scan-schedule">Auto-Scan Schedule:</label>
                         <select id="scan-schedule" name="scanning.schedule">
@@ -111,93 +120,93 @@
                         </select>
                         <small>Cron format</small>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="messages-per-scan">Messages to Scan Per Run:</label>
-                        <input type="number" id="messages-per-scan" name="scanning.messages_per_scan" 
-                               value="50" min="10" max="500">
+                        <input type="number" id="messages-per-scan" name="scanning.messages_per_scan" value="50"
+                            min="10" max="500">
                         <small>How many recent messages to analyze</small>
                     </div>
-                    
+
                     <div class="form-group checkbox">
                         <input type="checkbox" id="scan-recent-only" name="scanning.scan_recent_only">
                         <label for="scan-recent-only">Only scan messages since last scan</label>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="confidence-threshold">Confidence Threshold:</label>
-                        <input type="number" id="confidence-threshold" name="scanning.confidence_threshold" 
-                               value="0.7" min="0" max="1" step="0.1">
+                        <input type="number" id="confidence-threshold" name="scanning.confidence_threshold" value="0.7"
+                            min="0" max="1" step="0.1">
                         <small>Entities below this confidence require review (0-1)</small>
                     </div>
                 </section>
-                
+
                 <!-- Auto-Apply Settings -->
                 <section class="settings-section">
                     <h2>⚡ Auto-Apply Settings</h2>
-                    
+
                     <div class="form-group checkbox">
                         <input type="checkbox" id="auto-apply-enabled" name="auto_apply.enabled">
                         <label for="auto-apply-enabled">Auto-apply high confidence entities</label>
                         <small>Entities above threshold will be added automatically</small>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="high-confidence-threshold">High Confidence Threshold:</label>
-                        <input type="number" id="high-confidence-threshold" name="auto_apply.high_confidence_threshold" 
-                               value="0.9" min="0" max="1" step="0.1">
+                        <input type="number" id="high-confidence-threshold" name="auto_apply.high_confidence_threshold"
+                            value="0.9" min="0" max="1" step="0.1">
                         <small>Auto-apply entities with confidence above this</small>
                     </div>
-                    
+
                     <div class="form-group checkbox">
                         <input type="checkbox" id="create-backups" name="auto_apply.create_backups" checked>
                         <label for="create-backups">Create backups before applying updates</label>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="backup-retention">Backup Retention (days):</label>
-                        <input type="number" id="backup-retention" name="auto_apply.backup_retention_days" 
-                               value="30" min="1">
+                        <input type="number" id="backup-retention" name="auto_apply.backup_retention_days" value="30"
+                            min="1">
                     </div>
                 </section>
-                
+
                 <!-- Entity Tracking -->
                 <section class="settings-section">
                     <h2>🎯 Entity Types to Track</h2>
-                    
+
                     <div class="checkboxes-grid">
                         <div class="form-group checkbox">
                             <input type="checkbox" id="track-npcs" name="entity_tracking.npcs" checked>
                             <label for="track-npcs">NPCs</label>
                         </div>
-                        
+
                         <div class="form-group checkbox">
                             <input type="checkbox" id="track-factions" name="entity_tracking.factions" checked>
                             <label for="track-factions">Factions</label>
                         </div>
-                        
+
                         <div class="form-group checkbox">
                             <input type="checkbox" id="track-locations" name="entity_tracking.locations" checked>
                             <label for="track-locations">Locations</label>
                         </div>
-                        
+
                         <div class="form-group checkbox">
                             <input type="checkbox" id="track-items" name="entity_tracking.items" checked>
                             <label for="track-items">Items</label>
                         </div>
-                        
+
                         <div class="form-group checkbox">
                             <input type="checkbox" id="track-aliases" name="entity_tracking.aliases" checked>
                             <label for="track-aliases">Character Aliases</label>
                         </div>
-                        
+
                         <div class="form-group checkbox">
                             <input type="checkbox" id="track-stats" name="entity_tracking.stats" checked>
                             <label for="track-stats">Stat Changes</label>
                         </div>
                     </div>
                 </section>
-                
+
                 <div class="form-actions">
                     <button type="submit" class="btn-primary">💾 Save Settings</button>
                     <button type="button" onclick="loadSettings()" class="btn-secondary">↻ Reload</button>
@@ -205,8 +214,9 @@
             </form>
         </main>
     </div>
-    
+
     <script src="/static/js/api.js"></script>
     <script src="/static/js/settings.js"></script>
 </body>
+
 </html>

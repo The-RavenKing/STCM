@@ -1,0 +1,251 @@
+/* Lorebook Builder Styles */
+
+/* Mode Toggle */
+.mode-toggle {
+    display: flex;
+    gap: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    width: fit-content;
+    margin-bottom: 10px;
+}
+
+.mode-btn {
+    padding: 10px 24px;
+    border: none;
+    background: white;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.2s;
+    color: var(--text-dark);
+}
+
+.mode-btn:hover {
+    background: var(--bg-light);
+}
+
+.mode-btn.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* Target Controls */
+.target-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.target-controls .input-select {
+    flex: 1;
+}
+
+/* New Lorebook Form */
+.new-lorebook-form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 10px;
+    padding: 12px;
+    background: #f0f9ff;
+    border-radius: 6px;
+    border: 1px dashed var(--primary-color);
+}
+
+.new-lorebook-form .input-text {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+/* Lorebook Info */
+.lorebook-info {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 10px;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+/* Textareas */
+.lorebook-textarea {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    transition: border-color 0.2s;
+}
+
+.lorebook-textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.char-count {
+    text-align: right;
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 4px;
+}
+
+/* Category Groups */
+.category-group {
+    margin-bottom: 16px;
+}
+
+.category-label {
+    display: block;
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 6px;
+    color: var(--text-dark);
+}
+
+.category-hint {
+    display: block;
+    color: #6b7280;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.category-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    resize: vertical;
+    transition: border-color 0.2s;
+}
+
+.category-textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* Submit */
+.submit-section {
+    text-align: center;
+}
+
+.btn-large {
+    padding: 14px 40px;
+    font-size: 16px;
+    border-radius: 6px;
+}
+
+.btn-large:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* Progress */
+.progress-area {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: #f0f9ff;
+    border-radius: 6px;
+}
+
+.spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid #e5e7eb;
+    border-top: 3px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#progress-message {
+    font-size: 14px;
+    color: var(--text-dark);
+}
+
+/* Results */
+.results-area {
+    padding: 15px;
+}
+
+.results-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.result-stat {
+    background: #f9fafb;
+    padding: 12px;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.result-stat .stat-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.result-stat .stat-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+.result-message {
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.result-message.success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.result-message.error {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.result-message.info {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+/* Review link */
+.review-link {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 8px 20px;
+    background: var(--primary-color);
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.review-link:hover {
+    background: var(--primary-hover);
+}

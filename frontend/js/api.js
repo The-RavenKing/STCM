@@ -132,6 +132,35 @@ class API {
         const response = await fetch(`${API_BASE}/stats`);
         return await this._handleResponse(response);
     }
+
+    // Lorebook Builder
+    static async buildLorebook(request) {
+        const response = await fetch(`${API_BASE}/lorebook/build`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request)
+        });
+        return await this._handleResponse(response);
+    }
+
+    static async listLorebooks() {
+        const response = await fetch(`${API_BASE}/lorebook/list`);
+        return await this._handleResponse(response);
+    }
+
+    static async createLorebook(name) {
+        const response = await fetch(`${API_BASE}/lorebook/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+        return await this._handleResponse(response);
+    }
+
+    static async getLorebook(name) {
+        const response = await fetch(`${API_BASE}/lorebook/${encodeURIComponent(name)}`);
+        return await this._handleResponse(response);
+    }
 }
 
 // WebSocket Connection
@@ -184,5 +213,5 @@ class WSClient {
     }
 }
 
-// Initialize WebSocket
-const ws = new WSClient();
+// Initialize WebSocket (skip on setup wizard page — no ws-status element there)
+const ws = window.location.pathname === '/setup' ? null : new WSClient();

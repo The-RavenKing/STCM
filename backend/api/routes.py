@@ -13,6 +13,7 @@ from services.entity_extractor import EntityExtractor
 from services.lorebook_updater import LorebookUpdater
 from services.hallucination_detector import HallucinationDetector
 from services.backup_manager import BackupManager
+from services.lorebook_builder import LorebookBuilder
 from utils.file_ops import FileOperations
 from utils.scan_lock import scan_lock_manager
 
@@ -26,6 +27,7 @@ ENTITY_TYPE_MAP = {
     'items': 'item',
     'aliases': 'alias',
     'stats': 'stat',
+    'mythology': 'mythology',
 }
 
 # Pydantic models for request/response
@@ -48,6 +50,16 @@ class ChatMapping(BaseModel):
     character_file: str
     persona_file: Optional[str] = None
 
+class LorebookBuildRequest(BaseModel):
+    mode: str  # 'freeform' or 'structured'
+    text: Optional[str] = None  # For freeform mode
+    categories: Optional[Dict[str, str]] = None  # For structured mode
+    target: str  # Path to target lorebook file
+    lorebook_name: Optional[str] = None
+
+class LorebookCreateRequest(BaseModel):
+    name: str
+
 # Config endpoints
 @router.get("/config")
 async def get_config():
@@ -63,7 +75,8 @@ async def get_config():
         "sillytavern": {
             "chats_dir": config.chats_dir,
             "characters_dir": config.characters_dir,
-            "personas_dir": config.personas_dir
+            "personas_dir": config.personas_dir,
+            "lorebooks_dir": config.lorebooks_dir
         },
         "scanning": config.get('scanning', {}),
         "auto_apply": config.get('auto_apply', {}),
@@ -72,15 +85,22 @@ async def get_config():
 
 @router.post("/config")
 async def update_config(updates: Dict):
-    """Update configuration settings"""
+    """Update configuration settings (deep-merges nested dicts)"""
     try:
-        for key, value in updates.items():
-            config.set(key, value)
-        
+        def deep_merge(target: dict, source: dict):
+            """Recursively merge source into target, preserving existing keys."""
+            for key, value in source.items():
+                if key in target and isinstance(target[key], dict) and isinstance(value, dict):
+                    deep_merge(target[key], value)
+                else:
+                    target[key] = value
+
+        deep_merge(config.data, updates)
         config.save()
         return {"status": "success", "message": "Configuration updated"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Test endpoints
 @router.post("/test/ollama")
@@ -321,13 +341,20 @@ async def approve_entity(entity_id: int):
         import json
         entity['entity_data'] = json.loads(entity['entity_data'])
         
-        # Apply to lorebook
+        # Apply to lorebook (standalone vs character-embedded)
         updater = LorebookUpdater()
-        success = await updater.add_entry(
-            character_file=entity['target_file'],
-            entity=entity['entity_data'],
-            entity_type=entity['entity_type']
-        )
+        if updater.is_standalone_lorebook(entity['target_file']):
+            success = await updater.add_entry_standalone(
+                lorebook_file=entity['target_file'],
+                entity=entity['entity_data'],
+                entity_type=entity['entity_type']
+            )
+        else:
+            success = await updater.add_entry(
+                character_file=entity['target_file'],
+                entity=entity['entity_data'],
+                entity_type=entity['entity_type']
+            )
         
         if success:
             # Update status
@@ -347,6 +374,8 @@ async def approve_entity(entity_id: int):
         else:
             raise HTTPException(status_code=500, detail="Failed to add entity")
     
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -475,3 +504,154 @@ async def get_stats():
         "last_scan": last_scan,
         "total_scans": len(await db.get_scan_history(1000))
     }
+
+# ──────────────────────────────────────────────
+#  Lorebook Builder endpoints
+# ──────────────────────────────────────────────
+
+@router.post("/lorebook/build")
+async def build_lorebook(request: LorebookBuildRequest, background_tasks: BackgroundTasks):
+    """Submit freeform or structured text for lorebook processing"""
+    try:
+        builder = LorebookBuilder(ollama_client)
+        
+        if request.mode == 'freeform':
+            if not request.text or not request.text.strip():
+                raise HTTPException(status_code=400, detail="Text is required for freeform mode")
+            
+            background_tasks.add_task(
+                _run_lorebook_build,
+                builder, 'freeform', request.text, None,
+                request.target, request.lorebook_name
+            )
+        elif request.mode == 'structured':
+            if not request.categories:
+                raise HTTPException(status_code=400, detail="Categories are required for structured mode")
+            
+            # Check at least one category has content
+            has_content = any(v and v.strip() for v in request.categories.values())
+            if not has_content:
+                raise HTTPException(status_code=400, detail="At least one category must have content")
+            
+            background_tasks.add_task(
+                _run_lorebook_build,
+                builder, 'structured', None, request.categories,
+                request.target, request.lorebook_name
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Mode must be 'freeform' or 'structured'")
+        
+        return {
+            "status": "started",
+            "message": f"Lorebook build started in {request.mode} mode"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _run_lorebook_build(
+    builder: LorebookBuilder,
+    mode: str,
+    text: str,
+    categories: Dict,
+    target: str,
+    lorebook_name: str
+):
+    """Background task to run lorebook building"""
+    try:
+        # Broadcast start via WebSocket
+        try:
+            from main import app
+            if hasattr(app.state, 'broadcast'):
+                await app.state.broadcast({
+                    "type": "lorebook_build_progress",
+                    "status": "started",
+                    "mode": mode
+                })
+        except Exception:
+            pass
+        
+        if mode == 'freeform':
+            result = await builder.process_freeform(text, target, lorebook_name)
+        else:
+            result = await builder.process_structured(categories, target, lorebook_name)
+        
+        # Broadcast completion
+        try:
+            from main import app
+            if hasattr(app.state, 'broadcast'):
+                await app.state.broadcast({
+                    "type": "lorebook_build_complete",
+                    "status": result.get('status', 'unknown'),
+                    "entities_found": result.get('entities_found', 0),
+                    "lorebook_entries": result.get('lorebook_entries', 0)
+                })
+        except Exception:
+            pass
+        
+        print(f"✓ Lorebook build complete: {result}")
+    except Exception as e:
+        print(f"✗ Lorebook build failed: {e}")
+        try:
+            from main import app
+            if hasattr(app.state, 'broadcast'):
+                await app.state.broadcast({
+                    "type": "lorebook_build_error",
+                    "error": str(e)
+                })
+        except Exception:
+            pass
+
+
+@router.get("/lorebook/list")
+async def list_lorebooks():
+    """List all available lorebooks"""
+    try:
+        builder = LorebookBuilder(ollama_client)
+        lorebooks = await builder.list_lorebooks()
+        return {"lorebooks": lorebooks, "count": len(lorebooks)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/lorebook/create")
+async def create_lorebook(request: LorebookCreateRequest):
+    """Create a new empty standalone lorebook"""
+    try:
+        updater = LorebookUpdater()
+        result = await updater.create_standalone_lorebook(request.name)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/lorebook/{name}")
+async def get_lorebook(name: str):
+    """Get lorebook contents by name"""
+    try:
+        builder = LorebookBuilder(ollama_client)
+        
+        # Search for the lorebook by name across all known locations
+        lorebooks = await builder.list_lorebooks()
+        match = next(
+            (lb for lb in lorebooks if lb['name'] == name or Path(lb['file']).stem == name),
+            None
+        )
+        
+        if not match:
+            raise HTTPException(status_code=404, detail=f"Lorebook '{name}' not found")
+        
+        result = await builder.get_lorebook(match['file'])
+        if not result:
+            raise HTTPException(status_code=404, detail="Could not read lorebook")
+        
+        result['file'] = match['file']
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -492,7 +492,7 @@ All with proper indexes and foreign keys.
    - Review chat mapping configuration
 
 5. **API Documentation**
-   - Visit `http://localhost:8000/docs`
+   - Visit `http://localhost:7847/docs`
    - Interactive API testing
    - Request/response examples
 
@@ -547,7 +547,7 @@ PLUS:
 2. **Run** `python3 setup.py`
 3. **Edit** config.yaml with your paths
 4. **Start** `python backend/main.py`
-5. **Open** http://localhost:8000
+5. **Open** http://localhost:7847
 6. **Configure** chat mappings in Settings
 7. **Scan** your first chat
 8. **Approve** some entities

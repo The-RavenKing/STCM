@@ -91,13 +91,13 @@ You should see:
 ```
 ╔═══════════════════════════════════════════════════════════╗
 ║   SillyTavern Campaign Manager                            ║
-║   Dashboard: http://localhost:8000                        ║
+║   Dashboard: http://localhost:7847                        ║
 ╚═══════════════════════════════════════════════════════════╝
 ```
 
 ### Step 5: Open Your Browser
 
-Visit: **http://localhost:8000**
+Visit: **http://localhost:7847**
 
 ---
 
@@ -235,7 +235,7 @@ C:\Users\YourName\stcm\
 
 ### 1. Configure Chat Mapping
 
-1. Open http://localhost:8000
+1. Open http://localhost:7847
 2. Click **Settings**
 3. Scroll to "Chat to Lorebook Mapping"
 4. Add mapping:
@@ -371,7 +371,7 @@ dir "C:\Users\YourName\SillyTavern\data\default-user\chats"
 ```
 
 ### Check API
-Visit: http://localhost:8000/docs
+Visit: http://localhost:7847/docs
 
 ---
 

@@ -32,26 +32,22 @@ if not exist "backend\main.py" (
     exit /b 1
 )
 
-REM Check if config exists
+REM Check if config exists — run setup if not
 if not exist "config.yaml" (
-    echo WARNING: config.yaml not found!
-    echo Running setup.py to create it...
+    echo First-time setup detected...
     echo.
     python setup.py
     echo.
-    echo Please edit config.yaml with your SillyTavern paths, then run this script again.
-    echo.
-    echo Opening config.yaml in Notepad...
-    start notepad config.yaml
-    pause
-    exit /b 0
 )
 
 echo Starting STCM...
 echo.
-echo Dashboard will be available at: http://localhost:8000
+echo Dashboard will be available at: http://localhost:7847
 echo Press Ctrl+C to stop the server
 echo.
+
+REM Open the browser (will go to setup wizard on first run, dashboard otherwise)
+start http://localhost:7847
 
 REM Change to backend directory and run
 cd backend

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STCM - Setup Wizard</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .setup-container {
+            max-width: 640px;
+            width: 100%;
+            margin: 40px 20px;
+        }
+
+        .setup-header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .setup-header h1 {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .setup-header p {
+            opacity: 0.85;
+            font-size: 15px;
+        }
+
+        /* Step indicator */
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .step-dot {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.25);
+            color: rgba(255, 255, 255, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .step-dot.active {
+            background: white;
+            color: var(--primary-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .step-dot.done {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .step-connector {
+            width: 40px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.25);
+            align-self: center;
+            transition: background 0.3s;
+        }
+
+        .step-connector.done {
+            background: var(--success-color);
+        }
+
+        /* Card */
+        .setup-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        .step-panel {
+            padding: 30px;
+            display: none;
+        }
+
+        .step-panel.active {
+            display: block;
+        }
+
+        .step-panel h2 {
+            font-size: 1.3rem;
+            color: var(--text-dark);
+            margin-bottom: 6px;
+        }
+
+        .step-panel .step-description {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        /* Form tweaks */
+        .step-panel .form-group {
+            margin-bottom: 18px;
+        }
+
+        .step-panel .form-group label {
+            font-size: 14px;
+        }
+
+        .step-panel .form-group input,
+        .step-panel .form-group select {
+            font-size: 14px;
+        }
+
+        .step-panel .form-group small {
+            font-size: 12px;
+        }
+
+        .path-hint {
+            background: #f0f9ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 4px;
+            padding: 10px 12px;
+            font-size: 12px;
+            color: #1e40af;
+            margin-bottom: 18px;
+            line-height: 1.5;
+        }
+
+        .path-hint code {
+            background: #dbeafe;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-size: 11px;
+        }
+
+        /* Test connection result */
+        .test-result {
+            display: inline-block;
+            margin-left: 10px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .test-result.ok {
+            color: var(--success-color);
+        }
+
+        .test-result.fail {
+            color: var(--danger-color);
+        }
+
+        /* Navigation buttons */
+        .step-nav {
+            display: flex;
+            justify-content: space-between;
+            padding: 16px 30px;
+            background: #f9fafb;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .step-nav .btn-primary,
+        .step-nav .btn-secondary {
+            min-width: 120px;
+            text-align: center;
+        }
+
+        /* Done panel */
+        .done-panel {
+            text-align: center;
+            padding: 40px 30px;
+        }
+
+        .done-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+        }
+
+        .done-panel h2 {
+            margin-bottom: 10px;
+            color: var(--success-color);
+        }
+
+        .done-panel p {
+            color: #6b7280;
+            margin-bottom: 24px;
+        }
+
+        .done-panel .btn-primary {
+            padding: 12px 32px;
+            font-size: 16px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="setup-container">
+        <div class="setup-header">
+            <h1>🎲 SillyTavern Campaign Manager</h1>
+            <p>Let's get you set up in a couple of minutes.</p>
+        </div>
+
+        <!-- Step indicator -->
+        <div class="step-indicator">
+            <div class="step-dot active" id="dot-1">1</div>
+            <div class="step-connector" id="conn-1"></div>
+            <div class="step-dot" id="dot-2">2</div>
+            <div class="step-connector" id="conn-2"></div>
+            <div class="step-dot" id="dot-3">3</div>
+        </div>
+
+        <div class="setup-card">
+
+            <!-- Step 1: Ollama -->
+            <div class="step-panel active" id="step-1">
+                <h2>🤖 Ollama Configuration</h2>
+                <p class="step-description">Connect to your Ollama instance. If it's running locally with defaults you
+                    can skip ahead.</p>
+
+                <div class="form-group">
+                    <label for="setup-ollama-url">Ollama URL</label>
+                    <input type="text" id="setup-ollama-url" value="http://localhost:11434"
+                        placeholder="http://localhost:11434">
+                    <small>The URL where Ollama's API is accessible</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="setup-reader-model">Reader Model</label>
+                    <select id="setup-reader-model">
+                        <option value="llama3.2">llama3.2 (recommended)</option>
+                        <option value="mistral">mistral</option>
+                        <option value="qwen2.5">qwen2.5</option>
+                        <option value="gemma2">gemma2</option>
+                    </select>
+                    <small>Used for reading chats and extracting entities</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="setup-coder-model">Coder Model</label>
+                    <select id="setup-coder-model">
+                        <option value="qwen2.5-coder">qwen2.5-coder (recommended)</option>
+                        <option value="llama3.2">llama3.2</option>
+                        <option value="deepseek-coder-v2">deepseek-coder-v2</option>
+                    </select>
+                    <small>Used for generating structured lorebook entries</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="setup-api-key">API Key (optional)</label>
+                    <input type="password" id="setup-api-key" placeholder="Leave empty if not required">
+                </div>
+
+                <div>
+                    <button type="button" class="btn-secondary" onclick="testConnection()">Test Connection</button>
+                    <span id="test-result" class="test-result"></span>
+                </div>
+            </div>
+
+            <!-- Step 2: SillyTavern paths -->
+            <div class="step-panel" id="step-2">
+                <h2>📁 SillyTavern Directories</h2>
+                <p class="step-description">Point STCM at your SillyTavern data folders so it can read chats and update
+                    lorebooks.</p>
+
+                <div class="path-hint">
+                    <strong>Typical SillyTavern path:</strong><br>
+                    <code>C:\SillyTavern\data\default-user\</code> — look for
+                    <code>chats\</code>, <code>characters\</code>, <code>personas\</code>, and
+                    <code>worlds\</code> inside this folder.
+                </div>
+
+                <div class="form-group">
+                    <label for="setup-chats-dir">Chat Logs Directory <span
+                            style="color: var(--danger-color)">*</span></label>
+                    <input type="text" id="setup-chats-dir" placeholder="C:\SillyTavern\data\default-user\chats">
+                    <small>Where your .jsonl chat files are stored</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="setup-characters-dir">Characters Directory <span
+                            style="color: var(--danger-color)">*</span></label>
+                    <input type="text" id="setup-characters-dir"
+                        placeholder="C:\SillyTavern\data\default-user\characters">
+                    <small>Where character .json files are stored</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="setup-personas-dir">Personas Directory</label>
+                    <input type="text" id="setup-personas-dir" placeholder="C:\SillyTavern\data\default-user\personas">
+                    <small>Where persona files are stored (optional)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="setup-lorebooks-dir">Lorebooks Directory</label>
+                    <input type="text" id="setup-lorebooks-dir" placeholder="C:\SillyTavern\data\default-user\worlds">
+                    <small>The worlds/ folder for standalone lorebooks (optional)</small>
+                </div>
+            </div>
+
+            <!-- Step 3: Done -->
+            <div class="step-panel" id="step-3">
+                <div class="done-panel">
+                    <div class="done-icon">🎉</div>
+                    <h2>You're All Set!</h2>
+                    <p>Configuration saved. You can change these settings any time from the Settings page.</p>
+                    <a href="/" class="btn-primary" style="display: inline-block; text-decoration: none;">
+                        🚀 Go to Dashboard
+                    </a>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="step-nav" id="step-nav">
+                <button type="button" class="btn-secondary" id="btn-back" onclick="prevStep()"
+                    style="visibility: hidden;">
+                    ← Back
+                </button>
+                <button type="button" class="btn-primary" id="btn-next" onclick="nextStep()">
+                    Next →
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/setup.js"></script>
+</body>
+
+</html>

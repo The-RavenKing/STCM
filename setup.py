@@ -35,15 +35,15 @@ def install_requirements():
         sys.exit(1)
 
 def create_config():
-    """Create config.yaml from example"""
+    """Create config.yaml from example if it doesn't exist"""
     if Path("config.yaml").exists():
         print("⚠ config.yaml already exists, skipping...")
-        return
-    
+        return False  # Not a fresh setup
+
     import shutil
     shutil.copy("config.example.yaml", "config.yaml")
     print("✓ Created config.yaml from template")
-    print("   Please edit config.yaml with your SillyTavern paths!")
+    return True  # Fresh setup — wizard needed
 
 def initialize_database():
     """Initialize SQLite database"""
@@ -98,27 +98,22 @@ def main():
     create_directories()
     
     # Create config
-    create_config()
+    is_fresh = create_config()
     
     # Initialize database
     initialize_database()
     
     # Check Ollama
-    ollama_running = check_ollama()
+    check_ollama()
     
     print_header("Setup Complete!")
     
-    print("Next steps:")
-    print("1. Edit config.yaml with your SillyTavern paths")
-    if not ollama_running:
-        print("2. Install and start Ollama: https://ollama.ai")
-        print("3. Pull a model: ollama pull llama3.2")
-        print("4. Run the server: python backend/main.py")
+    if is_fresh:
+        print("The server will now start and open the Setup Wizard")
+        print("in your browser to complete configuration.\n")
     else:
-        print("2. Run the server: python backend/main.py")
-    
-    print("\nThen open http://localhost:8000 in your browser!")
-    print("\nHappy campaigning! 🎲")
+        print("Configuration already exists.")
+        print("The server will now start.\n")
 
 if __name__ == "__main__":
     main()

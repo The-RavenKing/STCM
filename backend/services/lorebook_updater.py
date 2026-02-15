@@ -1,4 +1,6 @@
+import json
 from typing import Dict, Optional, List
+from pathlib import Path
 from utils.file_ops import FileOperations
 from database import db
 import re
@@ -262,6 +264,23 @@ class LorebookUpdater:
             
             return content
         
+        elif entity_type == "mythology":
+            content = f"{name}"
+            
+            if entity.get("category"):
+                content += f" [{entity['category']}]"
+            
+            if entity.get("description"):
+                content += f" - {entity['description']}."
+            
+            if entity.get("significance"):
+                content += f"\n\nSignificance: {entity['significance']}"
+            
+            if entity.get("associated_entities"):
+                content += f"\nAssociated: {entity['associated_entities']}"
+            
+            return content
+        
         else:
             # Generic format
             content = f"{name}"
@@ -296,3 +315,139 @@ class LorebookUpdater:
             return 0
         except:
             return 0
+    
+    # ──────────────────────────────────────────────
+    #  Standalone lorebook support (SillyTavern World Info format)
+    # ──────────────────────────────────────────────
+    
+    async def create_standalone_lorebook(self, name: str) -> Dict:
+        """Create a new empty standalone lorebook JSON file."""
+        from config import config
+        
+        lorebooks_dir = config.get('sillytavern.lorebooks_dir')
+        if not lorebooks_dir:
+            raise ValueError("lorebooks_dir not configured in config.yaml")
+        
+        ldir = Path(lorebooks_dir)
+        ldir.mkdir(parents=True, exist_ok=True)
+        
+        # Sanitize filename
+        safe_name = re.sub(r'[^a-zA-Z0-9_\- ]', '', name).strip()
+        if not safe_name:
+            safe_name = "New_Lorebook"
+        
+        file_path = ldir / f"{safe_name}.json"
+        
+        # Don't overwrite existing
+        if file_path.exists():
+            return {
+                "status": "exists",
+                "message": f"Lorebook '{safe_name}' already exists",
+                "file": str(file_path)
+            }
+        
+        # SillyTavern World Info format
+        lorebook_data = {
+            "name": name,
+            "entries": {}
+        }
+        
+        file_path.write_text(
+            json.dumps(lorebook_data, indent=2, ensure_ascii=False),
+            encoding='utf-8'
+        )
+        
+        return {
+            "status": "created",
+            "message": f"Lorebook '{name}' created",
+            "file": str(file_path)
+        }
+    
+    async def add_entry_standalone(
+        self,
+        lorebook_file: str,
+        entity: Dict,
+        entity_type: str
+    ) -> bool:
+        """Add an entry to a standalone lorebook (World Info format)."""
+        try:
+            file_path = Path(lorebook_file)
+            data = json.loads(file_path.read_text(encoding='utf-8'))
+        except (json.JSONDecodeError, OSError, FileNotFoundError):
+            return False
+        
+        if 'entries' not in data:
+            data['entries'] = {}
+        
+        # Find next available numeric key
+        existing_keys = [int(k) for k in data['entries'].keys() if k.isdigit()]
+        next_key = str(max(existing_keys) + 1) if existing_keys else "0"
+        
+        # Check for duplicates by name
+        entity_name_lower = entity.get('name', '').lower()
+        for key, entry in data['entries'].items():
+            keys = entry.get('key', [])
+            if any(entity_name_lower == k.lower() for k in keys):
+                # Merge instead of duplicate
+                old_content = entry.get('content', '')
+                new_info = self._format_entity_content(entity, entity_type)
+                if new_info not in old_content:
+                    entry['content'] = f"{old_content}\n\n[Updated]\n{new_info}"
+                
+                file_path.write_text(
+                    json.dumps(data, indent=2, ensure_ascii=False),
+                    encoding='utf-8'
+                )
+                return True
+        
+        # Create new entry in World Info format
+        entry_id = self._generate_entry_id(entity.get('name', 'Unknown'))
+        
+        data['entries'][next_key] = {
+            "uid": entry_id,
+            "key": self._generate_keys(entity.get('name', 'Unknown')),
+            "keysecondary": [],
+            "comment": f"{entity_type.upper()} - Lorebook Builder",
+            "content": self._format_entity_content(entity, entity_type),
+            "constant": False,
+            "selective": True,
+            "selectiveLogic": 0,
+            "addMemo": True,
+            "order": 100,
+            "position": 0,
+            "disable": False,
+            "excludeRecursion": False,
+            "preventRecursion": False,
+            "delayUntilRecursion": False,
+            "probability": 100,
+            "useProbability": True,
+            "depth": 4,
+            "group": "",
+            "groupOverride": False,
+            "groupWeight": 100,
+            "scanDepth": None,
+            "caseSensitive": False,
+            "matchWholeWords": None,
+            "useGroupScoring": False,
+            "automationId": "",
+            "role": 0,
+            "vectorized": False,
+            "sticky": 0,
+            "cooldown": 0,
+            "delay": 0
+        }
+        
+        file_path.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False),
+            encoding='utf-8'
+        )
+        return True
+    
+    def is_standalone_lorebook(self, file_path: str) -> bool:
+        """Check if a file is a standalone lorebook (vs character card)."""
+        try:
+            data = json.loads(Path(file_path).read_text(encoding='utf-8'))
+            # Standalone lorebooks have 'entries' at top level, no 'data' key
+            return 'entries' in data and 'data' not in data
+        except (json.JSONDecodeError, OSError, FileNotFoundError):
+            return False

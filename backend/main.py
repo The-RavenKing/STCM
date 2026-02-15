@@ -55,18 +55,38 @@ app.add_middleware(
 app.include_router(router, prefix="/api")
 
 # Serve frontend static files
-frontend_path = Path("frontend")
+project_root = Path(__file__).resolve().parent.parent
+frontend_path = project_root / "frontend"
 if frontend_path.exists():
-    app.mount("/static", StaticFiles(directory="frontend"), name="static")
+    app.mount("/static", StaticFiles(directory=str(frontend_path)), name="static")
 
-# Root endpoint - serve index.html
+# Root endpoint - serve index.html or redirect to setup wizard
 @app.get("/")
 async def read_root():
-    """Serve the main dashboard"""
+    """Serve the main dashboard, or redirect to setup wizard on first run"""
+    if config.needs_setup:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/setup")
+    
     index_path = frontend_path / "index.html"
     if index_path.exists():
         return FileResponse(index_path)
     return {"message": "STCM API is running. Frontend not found."}
+
+# Setup wizard
+@app.get("/setup")
+async def setup_wizard():
+    """Serve the first-run setup wizard"""
+    setup_path = frontend_path / "setup.html"
+    if setup_path.exists():
+        return FileResponse(setup_path)
+    return {"message": "Setup page not found"}
+
+@app.get("/setup-status")
+async def setup_status():
+    """Check whether first-run setup is needed"""
+    return {"needs_setup": config.needs_setup}
+
 
 # Health check
 @app.get("/health")
@@ -121,15 +141,17 @@ app.state.broadcast = broadcast_update
 if __name__ == "__main__":
     # Get server config
     host = config.get('server.host', '0.0.0.0')
-    port = config.get('server.port', 8000)
+    port = config.get('server.port', 7847)
     
+    dash_url = f"http://localhost:{port}"
+    docs_url = f"http://localhost:{port}/docs"
     print(f"""
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
 ║   SillyTavern Campaign Manager                            ║
 ║                                                           ║
-║   Dashboard: http://localhost:{port}                          ║
-║   API Docs:  http://localhost:{port}/docs                     ║
+║   Dashboard: {dash_url:<44}║
+║   API Docs:  {docs_url:<44}║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
     """)

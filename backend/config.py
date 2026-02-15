@@ -6,16 +6,26 @@ class Config:
     """Configuration manager for STCM"""
     
     def __init__(self, config_path: str = "config.yaml"):
-        self.config_path = config_path
+        # Resolve relative to project root (parent of backend/)
+        self.project_root = Path(__file__).resolve().parent.parent
+        self.config_path = str(self.project_root / config_path)
         self.data = self.load()
     
     def load(self) -> Dict[str, Any]:
-        """Load configuration from YAML file"""
-        if not Path(self.config_path).exists():
-            raise FileNotFoundError(
-                f"Config file not found: {self.config_path}\n"
-                "Please copy config.example.yaml to config.yaml and edit it."
-            )
+        """Load configuration from YAML file, creating from template if missing"""
+        config_file = Path(self.config_path)
+        
+        if not config_file.exists():
+            # Auto-create from example template so the server can boot
+            example = self.project_root / "config.example.yaml"
+            if example.exists():
+                import shutil
+                shutil.copy(str(example), str(config_file))
+                print("✓ Created config.yaml from template (first run)")
+            else:
+                raise FileNotFoundError(
+                    f"Neither config.yaml nor config.example.yaml found in {self.project_root}"
+                )
         
         with open(self.config_path, 'r') as f:
             return yaml.safe_load(f)
@@ -81,12 +91,27 @@ class Config:
         return self.get('sillytavern.personas_dir')
     
     @property
+    def lorebooks_dir(self) -> str:
+        return self.get('sillytavern.lorebooks_dir')
+    
+    @property
     def chat_mappings(self) -> Dict[str, str]:
         return self.get('chat_mappings', {})
     
     @property
     def db_path(self) -> str:
         return self.get('database.path', 'data/stcm.db')
+
+    @property
+    def needs_setup(self) -> bool:
+        """Check if essential configuration is still missing or has placeholder values."""
+        chats = self.chats_dir or ''
+        chars = self.characters_dir or ''
+        # Unset or still contains the example placeholder path
+        return (
+            not chats or '/path/to/' in chats
+            or not chars or '/path/to/' in chars
+        )
 
 # Global config instance
 config = Config()
