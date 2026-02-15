@@ -432,6 +432,15 @@ button,
     border-radius: 6px;
 }
 
+.btn-xs {
+    padding: 4px 10px;
+    font-size: 0.7rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
 .btn-danger {
     background: linear-gradient(135deg, var(--danger-color), #b91c1c);
     color: white;

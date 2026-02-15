@@ -100,6 +100,16 @@ class API {
         return await this._handleResponse(response);
     }
 
+    static async listCharacters() {
+        const response = await fetch(`${API_BASE}/files/characters`);
+        return await this._handleResponse(response);
+    }
+
+    static async listPersonas() {
+        const response = await fetch(`${API_BASE}/files/personas`);
+        return await this._handleResponse(response);
+    }
+
     static async listBackups(filePath = null) {
         const url = filePath
             ? `${API_BASE}/files/backups?file_path=${filePath}`
@@ -168,6 +178,43 @@ class API {
 
     static async getLorebook(name) {
         const response = await fetch(`${API_BASE}/lorebook/${encodeURIComponent(name)}`);
+        return await this._handleResponse(response);
+    }
+
+    // Character Forge
+    static async createCharacter(description) {
+        const response = await fetch(`${API_BASE}/character/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description })
+        });
+        return await this._handleResponse(response);
+    }
+
+    static async modifyCharacter(characterData, instructions) {
+        const response = await fetch(`${API_BASE}/character/modify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ character_data: characterData, instructions })
+        });
+        return await this._handleResponse(response);
+    }
+
+    static async summarizeCharacter(characterData) {
+        const response = await fetch(`${API_BASE}/character/summary`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ character_data: characterData, instructions: "" }) // Schema reuses modify request
+        });
+        return await this._handleResponse(response);
+    }
+
+    static async saveCharacter(filename, characterData) {
+        const response = await fetch(`${API_BASE}/character/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename, character_data: characterData })
+        });
         return await this._handleResponse(response);
     }
 }

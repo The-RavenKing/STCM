@@ -18,6 +18,7 @@
                 <a href="/static/review.html">Review Queue</a>
                 <a href="/static/history.html">History</a>
                 <a href="/static/lorebook.html">Lorebook Builder</a>
+                <a href="/static/forge.html">Character Forge</a>
             </nav>
         </header>
 
@@ -148,6 +149,21 @@
                         <input type="number" id="messages-per-scan" name="scanning.messages_per_scan" value="50"
                             min="10" max="500">
                         <small>How many recent messages to analyze</small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="chunk-size">Chunk Size:</label>
+                            <input type="number" id="chunk-size" name="scanning.chunk_size" value="25" min="10"
+                                max="100">
+                            <small>Messages per processing block</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="chunk-overlap">Overlap:</label>
+                            <input type="number" id="chunk-overlap" name="scanning.chunk_overlap" value="10" min="0"
+                                max="50">
+                            <small>Overlapping messages between chunks</small>
+                        </div>
                     </div>
 
                     <div class="form-group checkbox">

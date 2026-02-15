@@ -53,6 +53,8 @@ async function loadSettings() {
             document.getElementById('messages-per-scan').value = config.scanning.messages_per_scan || 50;
             document.getElementById('scan-recent-only').checked = config.scanning.scan_recent_only || false;
             document.getElementById('confidence-threshold').value = config.scanning.confidence_threshold || 0.7;
+            document.getElementById('chunk-size').value = config.scanning.chunk_size || 25;
+            document.getElementById('chunk-overlap').value = config.scanning.chunk_overlap || 10;
         }
 
         if (config.auto_apply) {
@@ -172,11 +174,29 @@ function setNestedValue(obj, path, value) {
 
 // Chat Mapping Functions
 
+// Global state for file lists
+let availableChats = [];
+let availableCharacters = [];
+let availablePersonas = [];
+
 async function loadMappings() {
     try {
-        const { database_mappings, config_mappings } = await API.getMappings();
-        const container = document.getElementById('mappings-list');
+        // Fetch all lists in parallel
+        const [mappingsData, chatsData, charsData, personasData] = await Promise.all([
+            API.getMappings(),
+            API.listChats(),
+            API.listCharacters(),
+            API.listPersonas()
+        ]);
 
+        const { database_mappings, config_mappings } = mappingsData;
+
+        // Update global lists
+        availableChats = chatsData.chats || []; // These are objects: {file: "name", ...}
+        availableCharacters = charsData.characters || []; // Strings
+        availablePersonas = personasData.personas || []; // Strings
+
+        const container = document.getElementById('mappings-list');
         if (!container) return;
 
         container.innerHTML = '';
@@ -193,6 +213,7 @@ async function loadMappings() {
 
     } catch (error) {
         console.error('Error loading mappings:', error);
+        showNotification('Error loading mapping data', 'error');
     }
 }
 
@@ -205,13 +226,36 @@ function addMappingRow(chatFile = '', characterFile = '', personaFile = '') {
 
     const row = document.createElement('div');
     row.className = 'mapping-row';
+
+    // Helper to generate options
+    const generateOptions = (items, selected, isChatObj = false) => {
+        let html = '<option value="">-- Select --</option>';
+        let found = false;
+
+        items.forEach(item => {
+            const val = isChatObj ? item.file : item;
+            const isSelected = val === selected;
+            if (isSelected) found = true;
+            html += `<option value="${escapeAttr(val)}" ${isSelected ? 'selected' : ''}>${escapeAttr(val)}</option>`;
+        });
+
+        // Preserve existing value if not in list (e.g. deleted file)
+        if (selected && !found) {
+            html += `<option value="${escapeAttr(selected)}" selected>${escapeAttr(selected)} (Missing)</option>`;
+        }
+        return html;
+    };
+
     row.innerHTML = `
-        <input type="text" placeholder="Chat file (e.g., Jinx_-_2026-02-13.jsonl)" 
-               value="${escapeAttr(chatFile)}" class="mapping-chat">
-        <input type="text" placeholder="Character file (e.g., Jinx__2_.json)" 
-               value="${escapeAttr(characterFile)}" class="mapping-character">
-        <input type="text" placeholder="Persona file (optional)" 
-               value="${escapeAttr(personaFile || '')}" class="mapping-persona">
+        <select class="mapping-chat input-select">
+            ${generateOptions(availableChats, chatFile, true)}
+        </select>
+        <select class="mapping-character input-select">
+            ${generateOptions(availableCharacters, characterFile)}
+        </select>
+        <select class="mapping-persona input-select">
+            ${generateOptions(availablePersonas, personaFile)}
+        </select>
         <button type="button" onclick="saveMapping(this)" class="btn-secondary btn-small">Save</button>
         <button type="button" onclick="removeMapping(this)" class="btn-danger btn-small">Remove</button>
     `;

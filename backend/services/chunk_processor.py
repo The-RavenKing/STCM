@@ -16,8 +16,8 @@ class ChunkProcessor:
     
     def __init__(self, chat_reader: ChatReader):
         self.reader = chat_reader
-        self.chunk_size = config.get('scanning.chunk_size', 20)
-        self.overlap = config.get('scanning.chunk_overlap', 5)
+        self.chunk_size = config.get('scanning.chunk_size', 25)
+        self.overlap = config.get('scanning.chunk_overlap', 10)
         self.max_chunks = config.get('scanning.max_chunks_per_scan', 10)
         self.incremental = config.get('scanning.incremental_mode', True)
     

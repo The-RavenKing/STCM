@@ -93,7 +93,7 @@ async function loadActivityLog() {
 
 async function testOllama() {
     const statusEl = document.getElementById('ollama-status');
-    statusEl.textContent = 'Testing...';
+    statusEl.textContent = 'Communing...';
 
     try {
         const result = await API.testOllama();

@@ -2,7 +2,7 @@ import asyncio
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 from pathlib import Path
 import sys
@@ -432,6 +432,52 @@ async def list_chats():
     
     return {"chats": chats_info, "count": len(chats_info)}
 
+@router.get("/files/characters")
+async def list_characters():
+    """List available character files (recursive)"""
+    try:
+        path_str = config.characters_dir
+        if not path_str or not os.path.exists(path_str):
+            return {"characters": [], "count": 0}
+            
+        path_obj = Path(path_str)
+        files = []
+        
+        # Search for .json, .png, .webp
+        for ext in ["*.json", "*.png", "*.webp"]:
+            files.extend([str(f.relative_to(path_obj)) for f in path_obj.rglob(ext)])
+            
+        # Deduplicate and sort
+        files = sorted(list(set(files)))
+        
+        return {"characters": files, "count": len(files)}
+    except Exception as e:
+        print(f"Error listing characters: {e}")
+        return {"characters": [], "count": 0}
+
+@router.get("/files/personas")
+async def list_personas():
+    """List available persona files (recursive)"""
+    try:
+        path_str = config.personas_dir
+        if not path_str or not os.path.exists(path_str):
+            return {"personas": [], "count": 0}
+            
+        path_obj = Path(path_str)
+        files = []
+        
+        # Search for .json, .png, .webp
+        for ext in ["*.json", "*.png", "*.webp"]:
+            files.extend([str(f.relative_to(path_obj)) for f in path_obj.rglob(ext)])
+            
+        # Deduplicate and sort
+        files = sorted(list(set(files)))
+        
+        return {"personas": files, "count": len(files)}
+    except Exception as e:
+        print(f"Error listing personas: {e}")
+        return {"personas": [], "count": 0}
+
 @router.get("/files/backups")
 async def list_backups(file_path: Optional[str] = None):
     """List available backups"""
@@ -723,6 +769,90 @@ async def list_lorebooks():
         builder = LorebookBuilder(ollama_client)
         lorebooks = await builder.list_lorebooks()
         return {"lorebooks": lorebooks, "count": len(lorebooks)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ──────────────────────────────────────────────
+#  Character Forge endpoints
+# ──────────────────────────────────────────────
+
+from services.character_builder import CharacterBuilder
+
+class CharacterCreateRequest(BaseModel):
+    description: str
+
+class CharacterModifyRequest(BaseModel):
+    character_data: Dict[str, Any]
+    instructions: str
+
+class CharacterSaveRequest(BaseModel):
+    filename: str
+    character_data: Dict[str, Any]
+
+@router.post("/character/create")
+async def create_character_profile(request: CharacterCreateRequest):
+    """Generate a new character profile from description"""
+    try:
+        builder = CharacterBuilder(ollama_client)
+        result = await builder.generate_character(request.description)
+        return {"status": "success", "character": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/character/modify")
+async def modify_character_profile(request: CharacterModifyRequest):
+    """Modify an existing character profile"""
+    try:
+        builder = CharacterBuilder(ollama_client)
+        result = await builder.modify_character(request.character_data, request.instructions)
+        return {"status": "success", "character": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/character/summary")
+async def summarize_character_profile(request: CharacterModifyRequest):
+    """Summarize a character for context (uses modify request model for data)"""
+    try:
+        builder = CharacterBuilder(ollama_client)
+        summary = await builder.summarize_character(request.character_data)
+        return {"status": "success", "summary": summary}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/character/save")
+async def save_character_file(request: CharacterSaveRequest):
+    """Save character data to a JSON file"""
+    try:
+        # Ensure filename ends with .json
+        filename = request.filename
+        if not filename.endswith('.json'):
+            filename += '.json'
+            
+        # Sanitize filename (basic)
+        filename = "".join(c for c in filename if c.isalnum() or c in (' ', '-', '_', '.')).strip()
+        
+        path = Path(config.characters_dir) / filename
+        
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(request.character_data, f, indent=4)
+            
+        return {"status": "success", "message": f"Character saved to {filename}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/character/load")
+async def load_character(filename: str):
+    """Load character data from a JSON file"""
+    try:
+        path = Path(config.characters_dir) / filename
+        
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="Character file not found")
+            
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

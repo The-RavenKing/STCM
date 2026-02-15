@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Forge - STCM</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/lorebook.css"> <!-- Reusing some styles -->
+    <style>
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .split-view {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .preview-field {
+            margin-bottom: 15px;
+        }
+
+        .preview-field label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .preview-field textarea {
+            width: 100%;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .chat-interface {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: 500px;
+        }
+
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            background: var(--bg-dark);
+        }
+
+        .chat-input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input-area input {
+            flex: 1;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+
+        .message.user {
+            background: var(--bg-light);
+            margin-left: auto;
+            color: var(--text-main);
+        }
+
+        .message.ai {
+            background: rgba(245, 158, 11, 0.1);
+            margin-right: auto;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>⚒️ Character Forge</h1>
+            <nav>
+                <a href="/static/index.html">Dashboard</a>
+                <a href="/static/settings.html">Settings</a>
+                <a href="/static/review.html">Review Queue</a>
+                <a href="/static/history.html">History</a>
+                <a href="/static/lorebook.html">Lorebook Builder</a>
+                <a href="/static/forge.html" class="active">Character Forge</a>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Mode Toggle -->
+            <div class="action-section">
+                <div class="mode-toggle">
+                    <button id="tab-create" class="mode-btn active" onclick="switchTab('create')">
+                        ✨ Create New
+                    </button>
+                    <button id="tab-modify" class="mode-btn" onclick="switchTab('modify')">
+                        🔧 Modify Existing
+                    </button>
+                </div>
+            </div>
+
+            <!-- CREATE MODE -->
+            <div id="create-view">
+                <div class="split-view">
+                    <!-- Input Section -->
+                    <div class="action-section">
+                        <h2>Concept</h2>
+                        <p class="section-description">Describe the character you want to create. Be detailed about
+                            personality, appearance, and role.</p>
+
+                        <textarea id="create-desc" class="lorebook-textarea" rows="10"
+                            placeholder="Example: A grumpy dwarven blacksmith named Thordin who hates magic but loves craftsmanship. He runs a shop called 'The Anvil's Song' in the capital city..."></textarea>
+
+                        <button onclick="generateCharacter()" class="btn-primary btn-large"
+                            style="width: 100%; margin-top: 20px;">
+                            🔨 Forge Character
+                        </button>
+                    </div>
+
+                    <!-- Preview Section -->
+                    <div class="action-section">
+                        <h2>Preview</h2>
+                        <div id="create-preview">
+                            <p class="section-description">Generated character details will appear here for review and
+                                editing.</p>
+
+                            <div class="preview-field">
+                                <label>Name</label>
+                                <input type="text" id="char-name" class="input-text" placeholder="Character Name">
+                            </div>
+
+                            <div class="preview-field">
+                                <label>Description</label>
+                                <textarea id="char-description" rows="6"></textarea>
+                            </div>
+
+                            <div class="preview-field">
+                                <label>Personality</label>
+                                <textarea id="char-personality" rows="3"></textarea>
+                            </div>
+
+                            <div class="preview-field">
+                                <label>First Message</label>
+                                <textarea id="char-first-mes" rows="4"></textarea>
+                            </div>
+
+                            <button onclick="saveCharacter()" class="btn-success" style="width: 100%; margin-top: 10px;"
+                                disabled id="btn-save-new">
+                                💾 Save to File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODIFY MODE -->
+            <div id="modify-view" style="display: none;">
+                <div class="split-view">
+                    <!-- Selection & Chat -->
+                    <div class="action-section">
+                        <h2>Refinement</h2>
+
+                        <div class="form-group">
+                            <label>Select Character:</label>
+                            <div class="input-with-btn">
+                                <select id="modify-select" class="input-select">
+                                    <option value="">Loading characters...</option>
+                                </select>
+                                <button onclick="loadForModification()" class="btn-secondary">Load</button>
+                            </div>
+                        </div>
+
+                        <div class="chat-interface">
+                            <div id="chat-history" class="chat-history">
+                                <div class="message ai">
+                                    Select a character and click Load to begin refining.
+                                </div>
+                            </div>
+
+                            <div class="chat-input-area">
+                                <input type="text" id="chat-input" class="input-text"
+                                    placeholder="Instructions (e.g., 'Make him more cheerful')..." disabled>
+                                <button onclick="sendModification()" id="btn-send-mod" class="btn-primary"
+                                    disabled>➤</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Preview -->
+                    <div class="action-section">
+                        <h2>Current State</h2>
+                        <div id="modify-preview">
+                            <div class="preview-field">
+                                <label>Name</label>
+                                <input type="text" id="mod-name" class="input-text" readonly>
+                            </div>
+
+                            <div class="preview-field">
+                                <label>Description</label>
+                                <textarea id="mod-description" rows="10" readonly></textarea>
+                            </div>
+
+                            <div class="preview-field">
+                                <label>First Message</label>
+                                <textarea id="mod-first-mes" rows="6" readonly></textarea>
+                            </div>
+
+                            <button onclick="saveModifiedCharacter()" class="btn-success"
+                                style="width: 100%; margin-top: 10px;" disabled id="btn-save-mod">
+                                💾 Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span id="ws-status" class="ws-indicator">●</span>
+            <span id="status-message">Connecting...</span>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/forge.js"></script>
+</body>
+
+</html>
