@@ -44,6 +44,8 @@
     /* Off-white */
     --text-muted: #94a3b8;
     /* Muted Slate */
+    --text-dark: #0f172a;
+    /* Dark Text for Light Backgrounds */
 
     --border-color: #334155;
     /* Subtle Border */
@@ -576,4 +578,10 @@ code {
     header h1 {
         font-size: 1.5rem;
     }
+}
+
+/* Fix for Select Options in Dark Mode */
+select option {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
 }

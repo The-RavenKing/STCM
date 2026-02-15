@@ -13,22 +13,26 @@
 
 .mode-btn {
     padding: 10px 24px;
-    border: none;
-    background: white;
+    border: 1px solid var(--border-color);
+    background: var(--bg-light);
     cursor: pointer;
     font-weight: 500;
     font-size: 14px;
     transition: all 0.2s;
-    color: var(--text-dark);
+    color: var(--text-muted);
 }
 
 .mode-btn:hover {
-    background: var(--bg-light);
+    background: var(--bg-medium);
+    color: var(--text-main);
+    border-color: var(--border-glow);
 }
 
 .mode-btn.active {
     background: var(--primary-color);
     color: white;
+    border-color: var(--primary-color);
+    font-weight: 600;
 }
 
 /* Target Controls */
@@ -172,8 +176,13 @@
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 #progress-message {
