@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>STCM Dashboard</title>
-    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/main.css?v=tavern-v1">
 </head>
 
 <body>
@@ -25,37 +25,37 @@
             <!-- Status Cards -->
             <div class="cards-grid">
                 <div class="card">
-                    <div class="card-icon">🔍</div>
+                    <div class="card-icon">📜</div>
                     <div class="card-content">
-                        <h3>Last Scan</h3>
+                        <h3>Last Chronicle</h3>
                         <p id="last-scan-time" class="card-value">Never</p>
                         <span id="last-scan-status" class="status-badge"></span>
                     </div>
                 </div>
 
                 <div class="card">
-                    <div class="card-icon">⏳</div>
+                    <div class="card-icon">⚖️</div>
                     <div class="card-content">
-                        <h3>Pending Review</h3>
+                        <h3>Pending Judgment</h3>
                         <p id="pending-count" class="card-value">0</p>
                         <span class="card-label">entities awaiting approval</span>
                     </div>
                 </div>
 
                 <div class="card">
-                    <div class="card-icon">✓</div>
+                    <div class="card-icon">✍️</div>
                     <div class="card-content">
-                        <h3>Applied Today</h3>
+                        <h3>Inscribed Today</h3>
                         <p id="applied-count" class="card-value">0</p>
                         <span class="card-label">updates applied</span>
                     </div>
                 </div>
 
                 <div class="card">
-                    <div class="card-icon">🤖</div>
+                    <div class="card-icon">🔮</div>
                     <div class="card-content">
-                        <h3>Ollama Status</h3>
-                        <p id="ollama-status" class="card-value">Checking...</p>
+                        <h3>Oracle Status</h3>
+                        <p id="ollama-status" class="card-value">Communing...</p>
                         <button onclick="testOllama()" class="btn-small">Test Connection</button>
                     </div>
                 </div>
