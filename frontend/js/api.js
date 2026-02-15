@@ -182,6 +182,11 @@ class API {
     }
 
     // Character Forge
+    static async listCharacters() {
+        const response = await fetch(`${API_BASE}/files/characters`);
+        return await this._handleResponse(response);
+    }
+
     static async createCharacter(description) {
         const response = await fetch(`${API_BASE}/character/create`, {
             method: 'POST',
