@@ -110,6 +110,11 @@ class API {
         return await this._handleResponse(response);
     }
 
+    static async listLorebooks() {
+        const response = await fetch(`${API_BASE}/files/lorebooks`);
+        return await this._handleResponse(response);
+    }
+
     static async listBackups(filePath = null) {
         const url = filePath
             ? `${API_BASE}/files/backups?file_path=${filePath}`
@@ -133,14 +138,15 @@ class API {
         return await this._handleResponse(response);
     }
 
-    static async addMapping(chatFile, characterFile, personaFile = null) {
+    static async addMapping(chatFile, characterFile, personaFile = null, lorebookFile = null) {
         const response = await fetch(`${API_BASE}/mappings`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 chat_file: chatFile,
                 character_file: characterFile,
-                persona_file: personaFile
+                persona_file: personaFile,
+                lorebook_file: lorebookFile
             })
         });
         return await this._handleResponse(response);

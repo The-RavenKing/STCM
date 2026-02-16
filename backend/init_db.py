@@ -98,10 +98,18 @@ def init_database(db_path: str = "data/stcm.db"):
         chat_file TEXT NOT NULL UNIQUE,
         character_file TEXT NOT NULL,
         persona_file TEXT,
+        lorebook_file TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
+
+    # Migration: Add lorebook_file column if it doesn't exist
+    try:
+        cursor.execute("SELECT lorebook_file FROM chat_mappings LIMIT 1")
+    except sqlite3.OperationalError:
+        print("ℹ Adding missing 'lorebook_file' column to chat_mappings table...")
+        cursor.execute("ALTER TABLE chat_mappings ADD COLUMN lorebook_file TEXT")
     
     # Processing checkpoints (track what's been scanned)
     cursor.execute("""

@@ -53,6 +53,7 @@ class ChatMapping(BaseModel):
     chat_file: str
     character_file: str
     persona_file: Optional[str] = None
+    lorebook_file: Optional[str] = None
 
 class LorebookBuildRequest(BaseModel):
     mode: str  # 'freeform' or 'structured'
@@ -139,6 +140,8 @@ async def manual_scan(request: ScanRequest, background_tasks: BackgroundTasks):
     try:
         # Get chat mapping
         mapping = await db.get_chat_mapping(request.chat_file)
+        target_file = None
+        
         if not mapping:
             # Try to guess from config
             character_file = config.chat_mappings.get(request.chat_file)
@@ -147,14 +150,16 @@ async def manual_scan(request: ScanRequest, background_tasks: BackgroundTasks):
                     status_code=400,
                     detail=f"No character mapping found for {request.chat_file}. Please configure in settings."
                 )
+            target_file = character_file
         else:
-            character_file = mapping["character_file"]
+            # Prefer lorebook if mapped, otherwise character
+            target_file = mapping.get("lorebook_file") or mapping["character_file"]
         
         # Run scan in background with chunking
         background_tasks.add_task(
             run_scan,
             request.chat_file,
-            character_file,
+            target_file,
             request.force_rescan
         )
         
@@ -283,7 +288,11 @@ async def run_scan(chat_file: str, character_file: str, force_rescan: bool = Fal
         total_entities = sum(len(all_entities.get(t, [])) for t in all_entities.keys())
         
         # Add entities to queue (using singular type names for DB)
-        char_path = f"{config.characters_dir}/{character_file}"
+        if os.path.isabs(character_file):
+            char_path = character_file
+        else:
+            char_path = f"{config.characters_dir}/{character_file}"
+            
         source_context = f"Messages {metadata['start_index']}-{metadata['end_index']} from {chat_file}"
         
         for entity_type, entity_list in all_entities.items():
@@ -479,6 +488,17 @@ async def list_personas():
         print(f"Error listing personas: {e}")
         return {"personas": [], "count": 0}
 
+@router.get("/files/lorebooks")
+async def list_files_lorebooks():
+    """List available lorebooks (alias for consistency)"""
+    try:
+        builder = LorebookBuilder(ollama_client)
+        lorebooks = await builder.list_lorebooks()
+        return {"lorebooks": lorebooks, "count": len(lorebooks)}
+    except Exception as e:
+        print(f"Error listing lorebooks: {e}")
+        return {"lorebooks": [], "count": 0}
+
 @router.get("/files/backups")
 async def list_backups(file_path: Optional[str] = None):
     """List available backups"""
@@ -635,7 +655,8 @@ async def add_chat_mapping(mapping: ChatMapping):
     await db.add_chat_mapping(
         mapping.chat_file,
         mapping.character_file,
-        mapping.persona_file
+        mapping.persona_file,
+        mapping.lorebook_file
     )
     return {"status": "success", "message": "Mapping saved"}
 

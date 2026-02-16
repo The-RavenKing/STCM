@@ -268,18 +268,20 @@ class Database:
         self,
         chat_file: str,
         character_file: str,
-        persona_file: str = None
+        persona_file: str = None,
+        lorebook_file: str = None
     ):
         """Add or update chat to character mapping"""
         query = """
-        INSERT INTO chat_mappings (chat_file, character_file, persona_file)
-        VALUES (?, ?, ?)
+        INSERT INTO chat_mappings (chat_file, character_file, persona_file, lorebook_file)
+        VALUES (?, ?, ?, ?)
         ON CONFLICT(chat_file) DO UPDATE SET
             character_file = excluded.character_file,
             persona_file = excluded.persona_file,
+            lorebook_file = excluded.lorebook_file,
             updated_at = CURRENT_TIMESTAMP
         """
-        await self.execute(query, (chat_file, character_file, persona_file))
+        await self.execute(query, (chat_file, character_file, persona_file, lorebook_file))
     
     async def get_chat_mapping(self, chat_file: str) -> Optional[Dict]:
         """Get character file for a chat file"""

@@ -33,12 +33,18 @@ async function loadSettings() {
 
         // Populate form fields
         document.getElementById('ollama-url').value = config.ollama.url || '';
-        document.getElementById('ollama-model').value = config.ollama.reader_model || config.ollama.model || 'llama3.2';
 
-        // Populate coder model field if it exists in the DOM
-        const coderModelEl = document.getElementById('ollama-coder-model');
-        if (coderModelEl) {
-            coderModelEl.value = config.ollama.coder_model || config.ollama.model || 'llama3.2';
+        // Store the configured model values as data attributes so populateModelDropdowns can restore them
+        const readerVal = config.ollama.reader_model || config.ollama.model || 'llama3.2';
+        const readerEl = document.getElementById('ollama-model');
+        readerEl.dataset.configValue = readerVal;
+        readerEl.value = readerVal;
+
+        const coderVal = config.ollama.coder_model || config.ollama.model || 'llama3.2';
+        const coderEl = document.getElementById('ollama-coder-model');
+        if (coderEl) {
+            coderEl.dataset.configValue = coderVal;
+            coderEl.value = coderVal;
         }
 
         if (config.sillytavern) {
@@ -178,15 +184,17 @@ function setNestedValue(obj, path, value) {
 let availableChats = [];
 let availableCharacters = [];
 let availablePersonas = [];
+let availableLorebooks = [];
 
 async function loadMappings() {
     try {
         // Fetch all lists in parallel
-        const [mappingsData, chatsData, charsData, personasData] = await Promise.all([
+        const [mappingsData, chatsData, charsData, personasData, lorebooksData] = await Promise.all([
             API.getMappings(),
             API.listChats(),
             API.listCharacters(),
-            API.listPersonas()
+            API.listPersonas(),
+            API.listLorebooks()
         ]);
 
         const { database_mappings, config_mappings } = mappingsData;
@@ -195,6 +203,7 @@ async function loadMappings() {
         availableChats = chatsData.chats || []; // These are objects: {file: "name", ...}
         availableCharacters = charsData.characters || []; // Strings
         availablePersonas = personasData.personas || []; // Strings
+        availableLorebooks = (lorebooksData.lorebooks || []).map(lb => lb.file || lb.name || lb); // Normalize
 
         const container = document.getElementById('mappings-list');
         if (!container) return;
@@ -203,7 +212,7 @@ async function loadMappings() {
 
         // Load from database
         database_mappings.forEach(mapping => {
-            addMappingRow(mapping.chat_file, mapping.character_file, mapping.persona_file);
+            addMappingRow(mapping.chat_file, mapping.character_file, mapping.persona_file, mapping.lorebook_file);
         });
 
         // If no mappings, show one empty row
@@ -221,15 +230,15 @@ function addMapping() {
     addMappingRow();
 }
 
-function addMappingRow(chatFile = '', characterFile = '', personaFile = '') {
+function addMappingRow(chatFile = '', characterFile = '', personaFile = '', lorebookFile = '') {
     const container = document.getElementById('mappings-list');
 
     const row = document.createElement('div');
     row.className = 'mapping-row';
 
     // Helper to generate options
-    const generateOptions = (items, selected, isChatObj = false) => {
-        let html = '<option value="">-- Select --</option>';
+    const generateOptions = (items, selected, placeholder, isChatObj = false) => {
+        let html = `<option value="">${placeholder}</option>`;
         let found = false;
 
         items.forEach(item => {
@@ -248,13 +257,16 @@ function addMappingRow(chatFile = '', characterFile = '', personaFile = '') {
 
     row.innerHTML = `
         <select class="mapping-chat input-select">
-            ${generateOptions(availableChats, chatFile, true)}
+            ${generateOptions(availableChats, chatFile, '-- Chat --', true)}
         </select>
         <select class="mapping-character input-select">
-            ${generateOptions(availableCharacters, characterFile)}
+            ${generateOptions(availableCharacters, characterFile, '-- Character --')}
         </select>
         <select class="mapping-persona input-select">
-            ${generateOptions(availablePersonas, personaFile)}
+            ${generateOptions(availablePersonas, personaFile, '-- Persona --')}
+        </select>
+        <select class="mapping-lorebook input-select">
+            ${generateOptions(availableLorebooks, lorebookFile, '-- Lorebook (optional) --')}
         </select>
         <button type="button" onclick="saveMapping(this)" class="btn-secondary btn-small">Save</button>
         <button type="button" onclick="removeMapping(this)" class="btn-danger btn-small">Remove</button>
@@ -268,6 +280,7 @@ async function saveMapping(button) {
     const chatFile = row.querySelector('.mapping-chat').value;
     const characterFile = row.querySelector('.mapping-character').value;
     const personaFile = row.querySelector('.mapping-persona').value;
+    const lorebookFile = row.querySelector('.mapping-lorebook').value;
 
     if (!chatFile || !characterFile) {
         showNotification('Chat file and character file are required', 'warning');
@@ -275,7 +288,7 @@ async function saveMapping(button) {
     }
 
     try {
-        await API.addMapping(chatFile, characterFile, personaFile || null);
+        await API.addMapping(chatFile, characterFile, personaFile || null, lorebookFile || null);
         showNotification('Mapping saved!', 'success');
     } catch (error) {
         console.error('Error saving mapping:', error);
@@ -330,32 +343,39 @@ function populateModelDropdowns(models) {
     const readerSelect = document.getElementById('ollama-model');
     const coderSelect = document.getElementById('ollama-coder-model'); // If exists
 
-    // Save current selections
-    const currentReader = readerSelect.value;
-    const currentCoder = coderSelect ? coderSelect.value : null;
+    // Prefer the saved config value (from data-config-value), fall back to current .value
+    const currentReader = readerSelect.dataset.configValue || readerSelect.value;
+    const currentCoder = coderSelect ? (coderSelect.dataset.configValue || coderSelect.value) : null;
 
     // Helper to clear and fill
     const fillSelect = (select, currentVal) => {
         if (!select) return;
 
         select.innerHTML = '';
+        let matched = false;
         models.forEach(model => {
             const name = model.name || model; // Handle object or string
             const option = document.createElement('option');
             option.value = name;
             option.textContent = name;
-            if (name === currentVal) option.selected = true;
+            if (name === currentVal) {
+                option.selected = true;
+                matched = true;
+            }
             select.appendChild(option);
         });
 
         // Add current value if missing (custom/offline case)
-        if (currentVal && !models.some(m => (m.name || m) === currentVal)) {
+        if (currentVal && !matched) {
             const option = document.createElement('option');
             option.value = currentVal;
             option.textContent = `${currentVal} (Cached)`;
             option.selected = true;
             select.appendChild(option);
         }
+
+        // Clear the data attribute after first use so subsequent changes track normally
+        delete select.dataset.configValue;
     };
 
     fillSelect(readerSelect, currentReader);
